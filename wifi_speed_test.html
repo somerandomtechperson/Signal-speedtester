@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Signal — Internet Speed Test</title>
+<style>
+  :root{
+    color-scheme:dark;
+    --bg:#0a0f1a; --panel:#111a29; --panel-2:#141f31; --panel-3:#0d1522;
+    --border:rgba(169,190,220,.13); --text:#edf4ff; --muted:#95a5bd;
+    --blue:#65a9ff; --cyan:#54e1d2; --green:#8ce4b1; --orange:#f5c27b;
+    --danger:#ff8d9b; --shadow:0 18px 52px rgba(0,0,0,.22);
+  }
+  *{box-sizing:border-box}
+  html{min-height:100%;background:var(--bg)}
+  body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 12% 0%,rgba(44,105,184,.17),transparent 34rem),radial-gradient(ellipse at 88% 16%,rgba(40,190,177,.08),transparent 30rem),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:-.01em}
+  button{font:inherit}
+  .shell{max-width:1240px;margin:0 auto;padding:26px 26px 32px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 1px 26px;border-bottom:1px solid var(--border)}
+  .brand{display:flex;align-items:center;gap:12px;min-width:0}
+  .brand-icon{width:43px;height:43px;border:1px solid rgba(101,169,255,.27);border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,rgba(101,169,255,.18),rgba(84,225,210,.09));color:var(--blue);flex:none}
+  .brand h1{font-size:19px;line-height:1.1;margin:0;font-weight:740;letter-spacing:-.035em}
+  .brand p{margin:5px 0 0;color:var(--muted);font-size:12px;letter-spacing:.015em}
+  .top-status{display:flex;align-items:center;gap:9px;border:1px solid var(--border);border-radius:999px;padding:9px 13px;color:#bfd1e7;font-size:12px;background:rgba(17,26,41,.7);white-space:nowrap}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(140,228,177,.1)}
+  .dot.offline{background:var(--danger);box-shadow:0 0 0 4px rgba(255,141,155,.1)}
+  .intro{padding:28px 1px 23px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
+  .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:var(--cyan);font-weight:750;display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .eyebrow:before{content:"";width:18px;height:1px;background:var(--cyan)}
+  .intro h2{font-size:clamp(27px,4vw,39px);letter-spacing:-.055em;line-height:1.05;margin:0;font-weight:760}
+  .intro p{margin:10px 0 0;color:var(--muted);max-width:560px;font-size:14px;line-height:1.6}
+  .privacy-pill{display:flex;gap:8px;align-items:center;color:#a8bbd1;background:rgba(17,26,41,.76);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:11px;white-space:nowrap}
+  .layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(310px,.85fr);gap:17px;align-items:stretch}
+  .panel{border:1px solid var(--border);border-radius:21px;background:linear-gradient(155deg,rgba(19,30,48,.96),rgba(14,22,36,.98));box-shadow:var(--shadow);overflow:hidden;min-width:0}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:19px 21px;border-bottom:1px solid var(--border)}
+  .panel-heading{display:flex;align-items:center;gap:10px;min-width:0}
+  .tiny-icon{width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:rgba(101,169,255,.1);color:var(--blue);flex:none}
+  .panel-head h3{font-size:14px;margin:0;font-weight:700;letter-spacing:-.02em}
+  .panel-head p{margin:4px 0 0;font-size:11px;color:var(--muted)}
+  .subtle-label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8fa4c0;font-weight:750}
+  .test-body{padding:15px 22px 21px}
+  .stage-row{display:flex;align-items:center;justify-content:center;gap:8px;font-size:11px;color:var(--muted);margin:2px 0 0;min-height:20px}
+  .stage-live{width:6px;height:6px;border-radius:50%;background:var(--cyan);display:inline-block}
+  .stage-live.pulse{animation:pulse 1.4s infinite}
+  @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(84,225,210,.28)}50%{opacity:.65;box-shadow:0 0 0 5px rgba(84,225,210,0)}}
+  .gauge-wrap{position:relative;max-width:500px;width:100%;height:218px;margin:0 auto 1px}
+  #gaugeCanvas{width:100%;height:218px;display:block}
+  .gauge-center{position:absolute;top:58%;left:50%;transform:translate(-50%,-50%);width:90%;text-align:center;pointer-events:none}
+  .gauge-title{font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:#9db0c8;font-weight:780;margin-bottom:7px}
+  .gauge-number-row{display:flex;align-items:baseline;justify-content:center;gap:7px;line-height:1}
+  .gauge-number{font-size:clamp(46px,6.5vw,65px);font-weight:760;letter-spacing:-.075em;font-variant-numeric:tabular-nums}
+  .gauge-unit{font-size:14px;color:#a2b4cc;font-weight:650}
+  .gauge-note{font-size:11px;color:#859ab6;margin-top:8px;min-height:15px}
+  .actions{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:2px;flex-wrap:wrap}
+  .btn{border:1px solid transparent;border-radius:12px;padding:12px 19px;display:inline-flex;align-items:center;justify-content:center;gap:9px;font-size:12px;font-weight:750;cursor:pointer;transition:transform .15s ease,filter .15s ease,border-color .15s ease;min-height:43px}
+  .btn:hover:not(:disabled){filter:brightness(1.08);transform:translateY(-1px)}
+  .btn:active:not(:disabled){transform:translateY(0)}
+  .btn:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+  .btn:disabled{opacity:.42;cursor:not-allowed}
+  .btn[hidden]{display:none!important}
+  .btn-primary{color:#081626;background:linear-gradient(100deg,#79b6ff,#6ce0d4);box-shadow:0 7px 25px rgba(69,158,216,.2);min-width:178px}
+  .btn-secondary{color:#d1deee;border-color:var(--border);background:rgba(255,255,255,.025)}
+  .btn-danger{color:#ffc0c8;border-color:rgba(255,141,155,.2);background:rgba(255,141,155,.06)}
+  .progress-wrap{margin:19px auto 0;max-width:500px}
+  .progress-meta{display:flex;justify-content:space-between;gap:10px;font-size:10px;color:#8396b0;margin-bottom:7px}
+  .progress-track{width:100%;height:4px;border-radius:999px;background:#243148;overflow:hidden}
+  .progress-fill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,var(--blue),var(--cyan));transition:width .2s ease}
+  .test-footnote{text-align:center;color:#778ba6;font-size:10px;line-height:1.6;margin:13px auto 0;max-width:420px}
+  .right-stack{display:grid;gap:17px;grid-template-rows:auto auto 1fr}
+  .metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:14px}
+  .metric{position:relative;border:1px solid var(--border);border-radius:15px;padding:15px 14px 14px;background:rgba(8,15,26,.32);min-height:105px;overflow:hidden}
+  .metric:after{content:"";position:absolute;width:65px;height:65px;right:-30px;top:-32px;border-radius:50%;background:var(--glow,rgba(101,169,255,.12));filter:blur(1px)}
+  .metric-label{font-size:11px;color:#9aadc5;display:flex;align-items:center;gap:7px}
+  .metric-icon{width:24px;height:24px;display:grid;place-items:center;border-radius:8px;background:rgba(101,169,255,.09);color:var(--blue)}
+  .metric-value{margin-top:12px;font-size:26px;font-weight:735;letter-spacing:-.055em;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .metric-value .unit{font-size:10px;letter-spacing:0;color:#91a6c1;font-weight:650;margin-left:4px}
+  .metric-caption{font-size:10px;color:#788da8;margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .down .metric-icon{color:var(--blue)} .up .metric-icon{color:var(--cyan);background:rgba(84,225,210,.09)} .ping .metric-icon{color:var(--green);background:rgba(140,228,177,.09)} .jitter .metric-icon{color:var(--orange);background:rgba(245,194,123,.09)}
+  .best-body{padding:15px 18px 16px}
+  .best-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid rgba(169,190,220,.08)}
+  .best-row:last-child{border-bottom:0;padding-bottom:0}
+  .best-name{color:#a5b5c9;font-size:11px;display:flex;align-items:center;gap:8px}
+  .best-val{font-weight:730;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .best-val small{font-size:10px;color:#8da0ba;font-weight:600}
+  .details-body{padding:4px 18px 13px}
+  .detail-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(169,190,220,.07)}
+  .detail-row:last-child{border:0}
+  .detail-label{font-size:11px;color:#8ea3be;flex:none}
+  .detail-value{font-size:11px;color:#d6e2f2;text-align:right;max-width:63%;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+  .detail-value.muted{color:#8094af}
+  .lower-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:17px;margin-top:17px}
+  .chart-head-right{display:flex;align-items:center;gap:13px;color:#97abc4;font-size:10px;white-space:nowrap}
+  .legend{display:inline-flex;align-items:center;gap:6px}
+  .legend-dot{width:7px;height:7px;border-radius:50%;background:var(--blue)}
+  .legend-dot.up{background:var(--cyan)}
+  .chart-wrap{position:relative;padding:7px 14px 9px;height:245px}
+  #graphCanvas{width:100%;height:100%;display:block}
+  .chart-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#7489a5;font-size:11px;text-align:center;padding:25px}
+  .history-head-actions{display:flex;align-items:center;gap:7px}
+  .icon-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:rgba(255,255,255,.025);border:1px solid var(--border);color:#a9bbd1;border-radius:9px;padding:7px 9px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .icon-btn:hover{border-color:rgba(101,169,255,.36);color:var(--text)}
+  .history-wrap{padding:0 17px 14px;overflow:auto}
+  table{width:100%;border-collapse:collapse;min-width:510px}
+  th{font-size:10px;color:#8197b2;text-transform:uppercase;letter-spacing:.08em;text-align:left;padding:12px 9px;font-weight:750}
+  td{padding:13px 9px;border-top:1px solid rgba(169,190,220,.08);font-size:11px;color:#d4e0ef;font-variant-numeric:tabular-nums}
+  td:first-child{color:#9bb0c9;white-space:nowrap}
+  .table-speed{font-weight:740}
+  .history-empty{padding:29px 10px 30px;text-align:center;color:#8297b1;font-size:11px;line-height:1.7}
+  .history-empty strong{display:block;color:#bdcce0;font-size:12px;margin-bottom:4px}
+  .bottom-note{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;color:#6f829d;font-size:10px;line-height:1.65;padding:19px 2px 0}
+  .bottom-note span{max-width:650px}
+  .toast{position:fixed;right:22px;bottom:22px;max-width:min(380px,calc(100vw - 32px));z-index:20;padding:13px 16px;border-radius:12px;border:1px solid var(--border);background:#18253a;color:#eaf3ff;box-shadow:var(--shadow);font-size:12px;line-height:1.45;opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .2s,transform .2s}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.error{border-color:rgba(255,141,155,.35)}
+  .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  @media(max-width:900px){.layout{grid-template-columns:minmax(0,1.1fr) minmax(275px,.9fr)}.shell{padding:20px 18px 27px}.lower-grid{grid-template-columns:1fr}.chart-wrap{height:245px}.gauge-wrap{height:200px}#gaugeCanvas{height:200px}}
+  @media(max-width:680px){.shell{padding:15px 12px 22px}.topbar{padding-bottom:19px}.brand h1{font-size:17px}.top-status{padding:8px 10px;font-size:10px}.top-status span:last-child{display:none}.intro{display:block;padding:23px 1px 17px}.intro h2{font-size:31px}.intro p{font-size:13px}.privacy-pill{display:inline-flex;margin-top:15px}.layout{grid-template-columns:1fr}.right-stack{grid-template-rows:auto;gap:13px}.panel{border-radius:17px}.test-body{padding:12px 14px 18px}.panel-head{padding:16px}.gauge-wrap{height:195px;max-width:430px}#gaugeCanvas{height:195px}.gauge-number{font-size:54px}.metrics{padding:11px;gap:8px}.metric{min-height:98px;padding:13px 12px}.metric-value{font-size:24px}.lower-grid{margin-top:13px;gap:13px}.chart-wrap{height:225px;padding:6px 8px 10px}.panel-head .subtle-label{display:none}.bottom-note{display:block;padding-top:15px}.bottom-note span{display:block;margin-bottom:6px}.chart-head-right{gap:9px}.history-wrap{padding:0 11px 11px}.history-head-actions{gap:5px}}
+  @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.001ms!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon" aria-hidden="true">
+        <svg width="25" height="25" viewBox="0 0 24 24" fill="none"><path d="M3.2 8.9a13.2 13.2 0 0 1 17.6 0M6.5 12.3a8.2 8.2 0 0 1 11 0M9.6 15.5a3.7 3.7 0 0 1 4.8 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="19" r="1.25" fill="currentColor"/></svg>
+      </div>
+      <div><h1>Signal<span style="color:var(--cyan)">.</span></h1><p>INTERNET PERFORMANCE LAB</p></div>
+    </div>
+    <div class="top-status"><span id="onlineDot" class="dot"></span><span id="onlineLabel">Internet status · checking</span></div>
+  </header>
+
+  <section class="intro">
+    <div><div class="eyebrow">Connection diagnostics</div><h2>Your connection,<br>without the guesswork.</h2><p>Measure download, upload, latency and jitter with a real network test. No account, install, or terminal required.</p></div>
+    <div class="privacy-pill"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 5 6v5c0 4.4 2.8 7.7 7 10 4.2-2.3 7-5.6 7-10V6l-7-3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Local history · No account</div>
+  </section>
+
+  <main>
+    <div class="layout">
+      <section class="panel" aria-labelledby="testHeading">
+        <div class="panel-head">
+          <div class="panel-heading"><div class="tiny-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 17.5h2.5l2.2-7 3.2 9 2.4-12 2.1 7H20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h3 id="testHeading">Live speed test</h3><p>Real traffic · Cloudflare edge network</p></div></div>
+          <span class="subtle-label" id="testMode">READY</span>
+        </div>
+        <div class="test-body">
+          <div class="stage-row" aria-live="polite"><span id="stageDot" class="stage-live"></span><span id="stageText">Ready when you are</span></div>
+          <div class="gauge-wrap">
+            <canvas id="gaugeCanvas" aria-label="Live speedometer"></canvas>
+            <div class="gauge-center"><div class="gauge-title" id="gaugeTitle">Download speed</div><div class="gauge-number-row"><span class="gauge-number" id="gaugeNumber">0.0</span><span class="gauge-unit">Mbps</span></div><div class="gauge-note" id="gaugeNote">Press start to measure</div></div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" id="startBtn" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.8c0-.8.9-1.3 1.6-.9l9 6.1a1.2 1.2 0 0 1 0 2l-9 6.1c-.7.5-1.6 0-1.6-.9V5.8Z"/></svg><span id="startBtnText">Start speed test</span></button>
+            <button class="btn btn-danger" id="cancelBtn" type="button" hidden><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>Cancel</button>
+          </div>
+          <div class="progress-wrap"><div class="progress-meta"><span id="progressLabel">Test progress</span><span id="progressPercent">0%</span></div><div class="progress-track"><div class="progress-fill" id="progressFill"></div></div></div>
+          <p class="test-footnote" id="testFootnote">A typical run uses up to about 30 MB of test data. Results vary with Wi-Fi signal, other devices, and the route to the test server.</p>
+        </div>
+      </section>
+
+      <div class="right-stack">
+        <section class="panel" aria-label="Latest results">
+          <div class="panel-head"><div class="panel-heading"><div class="tiny-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19V5m0 14h16M7 15l3.4-4.2 3 2.2L19 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h3>Result snapshot</h3><p>Most recent completed test</p></div></div><span class="subtle-label" id="resultBadge">NO DATA</span></div>
+          <div class="metrics">
+            <div class="metric down" style="--glow:rgba(101,169,255,.13)"><div class="metric-label"><span class="metric-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v13m-5-5 5 5 5-5M5 17v3h14v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Download</div><div class="metric-value"><span id="downloadValue">—</span><span class="unit">Mbps</span></div><div class="metric-caption" id="downloadCaption">Receiving test data</div></div>
+            <div class="metric up" style="--glow:rgba(84,225,210,.12)"><div class="metric-label"><span class="metric-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21V8m-5 5 5-5 5 5M5 7V4h14v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Upload</div><div class="metric-value"><span id="uploadValue">—</span><span class="unit">Mbps</span></div><div class="metric-caption" id="uploadCaption">Sending test data</div></div>
+            <div class="metric ping" style="--glow:rgba(140,228,177,.12)"><div class="metric-label"><span class="metric-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>Ping</div><div class="metric-value"><span id="pingValue">—</span><span class="unit">ms</span></div><div class="metric-caption">Idle round-trip latency</div></div>
+            <div class="metric jitter" style="--glow:rgba(245,194,123,.12)"><div class="metric-label"><span class="metric-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 12h4l2.2-5 4.2 10 2.2-5h4.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Jitter</div><div class="metric-value"><span id="jitterValue">—</span><span class="unit">ms</span></div><div class="metric-caption">Variation between pings</div></div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="bestHeading">
+          <div class="panel-head"><div class="panel-heading"><div class="tiny-icon" style="color:var(--orange);background:rgba(245,194,123,.09)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div><div><h3 id="bestHeading">Your best results</h3><p>Personal records on this browser</p></div></div></div>
+          <div class="best-body">
+            <div class="best-row"><span class="best-name"><span style="color:var(--blue)">↓</span> Best download</span><span class="best-val" id="bestDownload">— <small>Mbps</small></span></div>
+            <div class="best-row"><span class="best-name"><span style="color:var(--cyan)">↑</span> Best upload</span><span class="best-val" id="bestUpload">— <small>Mbps</small></span></div>
+            <div class="best-row"><span class="best-name"><span style="color:var(--green)">◷</span> Lowest ping</span><span class="best-val" id="bestPing">— <small>ms</small></span></div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="detailsHeading">
+          <div class="panel-head"><div class="panel-heading"><div class="tiny-icon" style="color:var(--cyan);background:rgba(84,225,210,.08)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 20h8m-4-4v4M7.5 8.5h9m-9 3h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><div><h3 id="detailsHeading">Connection details</h3><p>What this browser can see</p></div></div></div>
+          <div class="details-body">
+            <div class="detail-row"><span class="detail-label">Test server</span><span class="detail-value" id="serverValue">Cloudflare edge · automatic</span></div>
+            <div class="detail-row"><span class="detail-label">Edge location</span><span class="detail-value muted" id="edgeValue">Not exposed by server</span></div>
+            <div class="detail-row"><span class="detail-label">Network hint</span><span class="detail-value muted" id="networkValue">Checking browser support…</span></div>
+            <div class="detail-row"><span class="detail-label">Browser</span><span class="detail-value" id="browserValue">Detecting…</span></div>
+            <div class="detail-row"><span class="detail-label">Test route</span><span class="detail-value" id="routeValue">speed.cloudflare.com</span></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="lower-grid">
+      <section class="panel" aria-labelledby="graphHeading">
+        <div class="panel-head"><div class="panel-heading"><div class="tiny-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 18V6m0 12h16M7 14l3.5-4 3 2 4.5-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h3 id="graphHeading">Live speed trend</h3><p>Throughput captured during this run</p></div></div><div class="chart-head-right"><span class="legend"><span class="legend-dot"></span>Download</span><span class="legend"><span class="legend-dot up"></span>Upload</span></div></div>
+        <div class="chart-wrap"><canvas id="graphCanvas" aria-label="Live download and upload graph"></canvas><div class="chart-empty" id="graphEmpty">Your live measurements will draw here<br>when a test begins.</div></div>
+      </section>
+      <section class="panel" aria-labelledby="historyHeading">
+        <div class="panel-head"><div class="panel-heading"><div class="tiny-icon" style="color:var(--green);background:rgba(140,228,177,.09)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M6 4h12M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9M9 13v4m6-4v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h3 id="historyHeading">Test history</h3><p id="historySubtitle">Saved on this device</p></div></div><div class="history-head-actions"><button class="icon-btn" id="exportBtn" type="button" title="Download history as CSV" disabled><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 18v3h16v-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Export</button><button class="icon-btn" id="clearBtn" type="button" title="Clear saved test history" disabled>Clear</button></div></div>
+        <div class="history-wrap" id="historyContent"><div class="history-empty"><strong>No tests saved yet</strong>Run your first test and your results will appear here.</div></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="bottom-note"><span>Measurements use public Cloudflare speed-test endpoints. Wi-Fi signal strength and the access point's local link rate are not directly exposed by most desktop browsers, so this measures end-to-end internet throughput instead.</span><span id="storageNote">Saved locally in this browser when supported.</span></footer>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const API_DOWN = 'https://speed.cloudflare.com/__down';
+  const API_UP = 'https://speed.cloudflare.com/__up';
+  const STORAGE_KEY = 'signal-speedtest-history-v1';
+  const MAX_HISTORY = 20;
+  const MAX_DOWNLOAD_MS = 12000;
+  const MAX_UPLOAD_MS = 10000;
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    start: $('startBtn'), startText: $('startBtnText'), cancel: $('cancelBtn'),
+    mode: $('testMode'), stage: $('stageText'), stageDot: $('stageDot'),
+    gauge: $('gaugeCanvas'), gaugeTitle: $('gaugeTitle'), gaugeNumber: $('gaugeNumber'), gaugeNote: $('gaugeNote'),
+    progressLabel: $('progressLabel'), progressPercent: $('progressPercent'), progressFill: $('progressFill'),
+    download: $('downloadValue'), upload: $('uploadValue'), ping: $('pingValue'), jitter: $('jitterValue'),
+    downloadCaption: $('downloadCaption'), uploadCaption: $('uploadCaption'), resultBadge: $('resultBadge'),
+    bestDownload: $('bestDownload'), bestUpload: $('bestUpload'), bestPing: $('bestPing'),
+    graph: $('graphCanvas'), graphEmpty: $('graphEmpty'), history: $('historyContent'), historySubtitle: $('historySubtitle'),
+    exportBtn: $('exportBtn'), clearBtn: $('clearBtn'), onlineDot: $('onlineDot'), onlineLabel: $('onlineLabel'),
+    network: $('networkValue'), browser: $('browserValue'), edge: $('edgeValue'), server: $('serverValue'), toast: $('toast'), storageNote: $('storageNote')
+  };
+  const state = {
+    running:false, controller:null, activeXhr:null, phase:'idle', progress:0,
+    currentSpeed:0, download:null, upload:null, ping:null, jitter:null,
+    pingSamples:[], graphPoints:[], graphStart:0, lastGraphAt:0,
+    edgeLocation:'', history:[], storageAvailable:true, toastTimer:0,
+    currentPhaseBytes:0, totalDownloaded:0, totalUploaded:0, phaseStart:0,
+    sampledDownloads:[], sampledUploads:[]
+  };
+
+  function num(value, digits=1) {
+    if (!Number.isFinite(value) || value < 0) return '—';
+    if (value >= 1000) return value.toLocaleString(undefined,{maximumFractionDigits:0});
+    return value.toFixed(digits);
+  }
+  function formatDate(iso) {
+    try { return new Date(iso).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}); }
+    catch (_) { return String(iso || ''); }
+  }
+  function median(values) {
+    if (!values.length) return null;
+    const sorted = values.slice().sort((a,b)=>a-b); const mid = Math.floor(sorted.length/2);
+    return sorted.length%2 ? sorted[mid] : (sorted[mid-1]+sorted[mid])/2;
+  }
+  function meanAbsoluteStep(values) {
+    if (values.length < 2) return 0;
+    let sum=0; for (let i=1;i<values.length;i++) sum += Math.abs(values[i]-values[i-1]);
+    return sum/(values.length-1);
+  }
+  function showToast(message, error=false) {
+    clearTimeout(state.toastTimer); els.toast.textContent=message; els.toast.classList.toggle('error',error); els.toast.classList.add('show');
+    state.toastTimer=setTimeout(()=>els.toast.classList.remove('show'),4300);
+  }
+  function safeStorageRead() {
+    try {
+      const raw=localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const parsed=JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter(x=>x && Number.isFinite(x.download) && Number.isFinite(x.upload)).slice(0,MAX_HISTORY) : [];
+    } catch (_) { state.storageAvailable=false; return []; }
+  }
+  function safeStorageWrite() {
+    try { localStorage.setItem(STORAGE_KEY,JSON.stringify(state.history)); state.storageAvailable=true; }
+    catch (_) { state.storageAvailable=false; }
+    updateStorageNote();
+  }
+  function updateStorageNote() {
+    els.storageNote.textContent = state.storageAvailable ? 'History is stored locally in this browser.' : 'This browser restricts local file storage; history may last only until this page closes.';
+    els.historySubtitle.textContent = state.storageAvailable ? 'Saved on this device' : 'Session history · browser storage restricted';
+  }
+  function setOnlineStatus() {
+    const online=navigator.onLine;
+    els.onlineDot.classList.toggle('offline',!online);
+    els.onlineLabel.textContent=online?'Browser reports online':'Browser reports offline';
+  }
+  function browserName() {
+    const ua=navigator.userAgent || '';
+    if (navigator.userAgentData && Array.isArray(navigator.userAgentData.brands)) {
+      const preferred=navigator.userAgentData.brands.find(b=>/Google Chrome|Microsoft Edge|Chromium|Opera/i.test(b.brand));
+      if (preferred) return preferred.brand+' '+preferred.version;
+    }
+    if (/Edg\//.test(ua)) return 'Microsoft Edge';
+    if (/OPR\//.test(ua)) return 'Opera';
+    if (/Chrome\//.test(ua)) return 'Chrome / Chromium';
+    if (/Firefox\//.test(ua)) return 'Firefox';
+    if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) return 'Safari';
+    return 'Web browser';
+  }
+  function updateConnectionDetails() {
+    const c=navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (c) {
+      const parts=[];
+      if (c.effectiveType) parts.push(c.effectiveType.toUpperCase());
+      if (Number.isFinite(c.downlink)) parts.push('browser hint '+c.downlink+' Mbps');
+      if (Number.isFinite(c.rtt)) parts.push('hint RTT '+c.rtt+' ms');
+      if (c.saveData) parts.push('Data Saver');
+      els.network.textContent=parts.join(' · ') || 'Network API available';
+      els.network.classList.remove('muted');
+    } else {
+      els.network.textContent='Not exposed by this browser';
+      els.network.classList.add('muted');
+    }
+    els.browser.textContent=browserName();
+    els.server.textContent='Cloudflare edge · automatic';
+    els.edge.textContent=state.edgeLocation || 'Not exposed by server';
+  }
+  function setStage(text, mode) {
+    els.stage.textContent=text;
+    els.stageDot.classList.toggle('pulse',!!mode);
+    els.mode.textContent=mode ? 'RUNNING' : (state.phase==='complete' ? 'COMPLETE' : state.phase==='error' ? 'ERROR' : state.phase==='cancelled' ? 'CANCELLED' : 'READY');
+  }
+  function setProgress(value,label) {
+    state.progress=Math.max(0,Math.min(100,value));
+    els.progressFill.style.width=state.progress+'%';
+    els.progressPercent.textContent=Math.round(state.progress)+'%';
+    if(label) els.progressLabel.textContent=label;
+  }
+  function setGauge(speed, title, note) {
+    state.currentSpeed=Number.isFinite(speed)?Math.max(0,speed):0;
+    els.gaugeNumber.textContent=num(state.currentSpeed,1);
+    if(title) els.gaugeTitle.textContent=title;
+    if(note!==undefined) els.gaugeNote.textContent=note;
+    drawGauge();
+  }
+  function addGraphPoint(value) {
+    const now=performance.now();
+    if (now-state.lastGraphAt < 100 && state.graphPoints.length) return;
+    state.lastGraphAt=now;
+    const point={t:(now-state.graphStart)/1000,down:null,up:null};
+    if(state.phase==='download') point.down=value;
+    if(state.phase==='upload') point.up=value;
+    state.graphPoints.push(point);
+    if(state.graphPoints.length>170) state.graphPoints.splice(0,state.graphPoints.length-170);
+    els.graphEmpty.style.display='none'; drawGraph();
+  }
+  function recordEdge(response) {
+    try {
+      const ray=response.headers.get('cf-ray');
+      if(ray) {
+        const match=ray.match(/-([A-Z]{3,4})$/);
+        state.edgeLocation=match ? match[1]+' (Cloudflare edge)' : 'Cloudflare edge detected';
+        els.edge.textContent=state.edgeLocation;
+      }
+    } catch (_) { /* Cross-origin response headers may not be exposed. */ }
+  }
+  function setMetric(el,value,digits=1) { el.textContent=value===null||value===undefined?'—':num(value,digits); }
+  function renderLiveMetrics() {
+    if(state.download!==null) setMetric(els.download,state.download,1);
+    if(state.upload!==null) setMetric(els.upload,state.upload,1);
+    if(state.ping!==null) setMetric(els.ping,state.ping,1);
+    if(state.jitter!==null) setMetric(els.jitter,state.jitter,1);
+  }
+
+  function drawGauge() {
+    const canvas=els.gauge; if(!canvas) return;
+    const rect=canvas.getBoundingClientRect(); if(!rect.width||!rect.height) return;
+    const dpr=Math.min(window.devicePixelRatio||1,2); const w=rect.width, h=rect.height;
+    if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);}
+    const ctx=canvas.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,w,h);
+    const cx=w/2, cy=h*.78, r=Math.min(w*.43,h*.65), line=Math.max(9,Math.min(13,w*.027));
+    ctx.lineWidth=line;ctx.lineCap='round';
+    ctx.beginPath();ctx.arc(cx,cy,r,Math.PI,Math.PI*2);ctx.strokeStyle='rgba(123,150,188,.15)';ctx.stroke();
+    for(let i=0;i<=20;i++){
+      const a=Math.PI+(Math.PI*i/20); const inner=r-line*.98-4, outer=r-line*.98+2;
+      ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*inner,cy+Math.sin(a)*inner);ctx.lineTo(cx+Math.cos(a)*outer,cy+Math.sin(a)*outer);
+      ctx.lineWidth=1;ctx.strokeStyle=i%5===0?'rgba(169,194,225,.45)':'rgba(169,194,225,.17)';ctx.stroke();
+    }
+    const speed=Math.max(0,state.currentSpeed);
+    const scaled=Math.max(0.01,speed*1.15); const magnitude=Math.pow(10,Math.floor(Math.log10(scaled)));
+    const ratio=scaled/magnitude; const max=Math.max(10,(ratio<=1?magnitude:ratio<=2?2*magnitude:ratio<=5?5*magnitude:10*magnitude));
+    const amount=Math.min(1,speed/max);
+    if(amount>0.001){
+      const grad=ctx.createLinearGradient(cx-r,cy,cx+r,cy);grad.addColorStop(0,'#65a9ff');grad.addColorStop(.8,'#60d5e7');grad.addColorStop(1,'#54e1d2');
+      ctx.beginPath();ctx.arc(cx,cy,r,Math.PI,Math.PI+Math.PI*amount);ctx.strokeStyle=grad;ctx.lineWidth=line;ctx.stroke();
+    }
+    // Short end tick shows the needle position without obscuring the arc.
+    const ang=Math.PI+Math.PI*amount;
+    ctx.beginPath();ctx.arc(cx+Math.cos(ang)*r,cy+Math.sin(ang)*r,3,0,Math.PI*2);ctx.fillStyle='#e9f6ff';ctx.fill();
+  }
+
+  function drawGraph() {
+    const canvas=els.graph; if(!canvas) return;
+    const rect=canvas.getBoundingClientRect();if(!rect.width||!rect.height)return;
+    const dpr=Math.min(window.devicePixelRatio||1,2), w=rect.width, h=rect.height;
+    if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);}
+    const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+    const pad={l:43,r:12,t:12,b:25}, cw=Math.max(1,w-pad.l-pad.r), ch=Math.max(1,h-pad.t-pad.b);
+    const points=state.graphPoints;
+    const vals=[];for(const p of points){if(Number.isFinite(p.down))vals.push(p.down);if(Number.isFinite(p.up))vals.push(p.up);}
+    const maxV=Math.max(10,...vals); const top=Math.ceil(maxV/10)*10 || 10;
+    const xmax=Math.max(8,points.length?points[points.length-1].t:8);
+    ctx.font='10px system-ui, sans-serif';ctx.textBaseline='middle';
+    for(let i=0;i<=4;i++){
+      const y=pad.t+ch*i/4;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.strokeStyle='rgba(149,170,201,.11)';ctx.lineWidth=1;ctx.stroke();
+      ctx.fillStyle='#6f85a2';ctx.textAlign='right';ctx.fillText(num(top*(1-i/4),0),pad.l-9,y);
+    }
+    for(let i=0;i<=4;i++){
+      const x=pad.l+cw*i/4;ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,h-pad.b);ctx.strokeStyle='rgba(149,170,201,.07)';ctx.stroke();
+      ctx.fillStyle='#6f85a2';ctx.textAlign='center';ctx.fillText((xmax*i/4).toFixed(0)+'s',x,h-10);
+    }
+    function series(key,color){
+      let active=false;ctx.beginPath();ctx.lineWidth=2.2;ctx.lineJoin='round';ctx.lineCap='round';
+      for(const p of points){
+        const v=p[key];if(!Number.isFinite(v)){active=false;continue;}
+        const x=pad.l+Math.max(0,Math.min(1,p.t/xmax))*cw;const y=pad.t+ch-(Math.min(top,v)/top)*ch;
+        if(!active){ctx.moveTo(x,y);active=true;}else ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle=color;ctx.shadowColor=color;ctx.shadowBlur=5;ctx.stroke();ctx.shadowBlur=0;
+    }
+    series('down','#65a9ff');series('up','#54e1d2');
+    if(points.length>1){const last=points[points.length-1];const key=Number.isFinite(last.down)?'down':'up';const color=key==='down'?'#65a9ff':'#54e1d2';const v=last[key];if(Number.isFinite(v)){const x=pad.l+Math.max(0,Math.min(1,last.t/xmax))*cw;const y=pad.t+ch-(Math.min(top,v)/top)*ch;ctx.beginPath();ctx.arc(x,y,3.2,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();}}
+  }
+
+  function renderHistory() {
+    const history=state.history;
+    els.exportBtn.disabled=history.length===0;els.clearBtn.disabled=history.length===0;
+    const validDown=history.map(x=>x.download).filter(Number.isFinite),validUp=history.map(x=>x.upload).filter(Number.isFinite),validPing=history.map(x=>x.ping).filter(Number.isFinite);
+    els.bestDownload.innerHTML=(validDown.length?num(Math.max(...validDown),1):'—')+' <small>Mbps</small>';
+    els.bestUpload.innerHTML=(validUp.length?num(Math.max(...validUp),1):'—')+' <small>Mbps</small>';
+    els.bestPing.innerHTML=(validPing.length?num(Math.min(...validPing),1):'—')+' <small>ms</small>';
+    if(!history.length){els.history.innerHTML='<div class="history-empty"><strong>No tests saved yet</strong>Run your first test and your results will appear here.</div>';return;}
+    const table=document.createElement('table');table.innerHTML='<thead><tr><th>Date</th><th>Download</th><th>Upload</th><th>Ping</th><th>Jitter</th></tr></thead>';
+    const tbody=document.createElement('tbody');
+    for(const item of history.slice(0,MAX_HISTORY)){
+      const tr=document.createElement('tr');
+      const cols=[formatDate(item.date),num(item.download,1)+' Mbps',num(item.upload,1)+' Mbps',num(item.ping,1)+' ms',num(item.jitter,1)+' ms'];
+      cols.forEach((v,i)=>{const td=document.createElement('td');td.textContent=v;if(i===1||i===2)td.className='table-speed';tr.appendChild(td);});
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);els.history.replaceChildren(table);
+  }
+
+  function updateStorageUI() { updateStorageNote(); renderHistory(); }
+
+  function makeUrl(base, params) {
+    const u=new URL(base);for(const [k,v] of Object.entries(params))u.searchParams.set(k,String(v));return u.toString();
+  }
+  function checkActive() { if(!state.running || !state.controller || state.controller.signal.aborted) throw new DOMException('Test cancelled','AbortError'); }
+  function wait(ms, signal) {
+    return new Promise((resolve,reject)=>{
+      const id=setTimeout(resolve,ms);
+      if(signal){signal.addEventListener('abort',()=>{clearTimeout(id);reject(new DOMException('Test cancelled','AbortError'));},{once:true});}
+    });
+  }
+  function updatePhaseProgress(base,span,amount,label) {
+    setProgress(base+span*Math.max(0,Math.min(1,amount)),label);
+  }
+  async function runPingTest() {
+    state.phase='ping';state.phaseStart=performance.now();setStage('Measuring latency…',true);els.gaugeTitle.textContent='Ping';els.gaugeNote.textContent='Sending small round-trip requests';
+    const times=[];const total=8;
+    for(let i=0;i<total;i++){
+      checkActive();
+      const start=performance.now();
+      const response=await fetch(makeUrl(API_DOWN,{bytes:0,cacheBust:Date.now()+'-'+i+'-'+Math.random().toString(36).slice(2)}),{method:'GET',cache:'no-store',mode:'cors',signal:state.controller.signal});
+      if(!response.ok)throw new Error('The test server returned HTTP '+response.status+' during the latency test.');
+      recordEdge(response);await response.arrayBuffer();
+      const elapsed=performance.now()-start;times.push(elapsed);state.pingSamples=times.slice();
+      state.ping=median(times);state.jitter=meanAbsoluteStep(times);renderLiveMetrics();
+      updatePhaseProgress(3,12,(i+1)/total,'Checking latency');
+      if(i<total-1)await wait(85,state.controller.signal);
+    }
+    // Use the median to reduce the effect of an occasional delayed request.
+    state.ping=median(times);state.jitter=meanAbsoluteStep(times);renderLiveMetrics();
+  }
+
+  async function downloadOne(size, index) {
+    checkActive();
+    const started=performance.now();let bytes=0;let response;
+    const url=makeUrl(API_DOWN,{bytes: size,cacheBust:Date.now()+'-'+index+'-'+Math.random().toString(36).slice(2)});
+    response=await fetch(url,{method:'GET',cache:'no-store',mode:'cors',signal:state.controller.signal});
+    if(!response.ok)throw new Error('The test server returned HTTP '+response.status+' during the download test.');
+    recordEdge(response);
+    if(response.body && response.body.getReader){
+      const reader=response.body.getReader();
+      while(true){
+        checkActive();
+        const chunk=await reader.read();
+        if(chunk.done)break;
+        bytes+=chunk.value.byteLength;state.totalDownloaded+=chunk.value.byteLength;
+        const elapsed=Math.max(1,performance.now()-started);
+        const instant=bytes*8/(elapsed*1000);
+        setGauge(instant,'Download speed','Receiving test data');
+        addGraphPoint(instant);
+        const totalExpected=22_250_000;
+        updatePhaseProgress(15,46,state.totalDownloaded/totalExpected,'Measuring download');
+        if(performance.now()-state.phaseStart>=MAX_DOWNLOAD_MS){
+          try{await reader.cancel();}catch(_){}
+          return {bytes,duration:Math.max(1,performance.now()-started),partial:true};
+        }
+      }
+    }else{
+      const data=await response.arrayBuffer();bytes=data.byteLength;state.totalDownloaded+=bytes;
+    }
+    const duration=Math.max(1,performance.now()-started);
+    const mbps=bytes*8/(duration*1000);
+    return {bytes,duration,mbps,partial:false};
+  }
+  function chooseBandwidth(samples, minimumBytes) {
+    const usable=samples.filter(s=>s.bytes>=minimumBytes && s.duration>=25 && Number.isFinite(s.mbps));
+    const values=(usable.length?usable:samples.filter(s=>s.bytes>0&&Number.isFinite(s.mbps))).map(s=>s.mbps);
+    return values.length?median(values):null;
+  }
+  async function runDownloadTest() {
+    state.phase='download';state.phaseStart=performance.now();state.totalDownloaded=0;state.sampledDownloads=[];setStage('Measuring download speed…',true);els.gaugeTitle.textContent='Download speed';els.gaugeNote.textContent='Receiving test data';
+    const sizes=[250_000,1_000_000,1_000_000,5_000_000,5_000_000,10_000_000];
+    for(let i=0;i<sizes.length;i++){
+      checkActive();if(performance.now()-state.phaseStart>=MAX_DOWNLOAD_MS)break;
+      const sample=await downloadOne(sizes[i],i);
+      if(sample.bytes>0){
+        if(!sample.partial) state.sampledDownloads.push({bytes:sample.bytes,duration:sample.duration,mbps:sample.mbps});
+        const estimate=chooseBandwidth(state.sampledDownloads,1_000_000);
+        if(estimate!==null){state.download=estimate;setMetric(els.download,estimate,1);}
+      }
+      if(sample.partial)break;
+    }
+    const final=chooseBandwidth(state.sampledDownloads,1_000_000);
+    if(final===null)throw new Error('The download test did not receive enough data for a reliable measurement.');
+    state.download=final;setMetric(els.download,final,1);els.downloadCaption.textContent='Measured this run';
+    setGauge(final,'Download speed','Download test complete');
+    setProgress(Math.max(state.progress,61),'Download complete');
+  }
+
+  async function uploadOne(size,index) {
+    checkActive();
+    const started=performance.now();
+    const url=makeUrl(API_UP,{cacheBust:Date.now()+'-'+index+'-'+Math.random().toString(36).slice(2)});
+    // Use fetch with a raw byte body and no custom headers. This avoids requiring
+    // an XHR upload-progress preflight when the page is opened from file://.
+    const response=await fetch(url,{
+      method:'POST',
+      body:new Uint8Array(size),
+      cache:'no-store',
+      mode:'cors',
+      signal:state.controller.signal
+    });
+    if(!response.ok)throw new Error('The test server returned HTTP '+response.status+' during the upload test.');
+    recordEdge(response);
+    await response.arrayBuffer();
+    const duration=Math.max(1,performance.now()-started);
+    const mbps=size*8/(duration*1000);
+    state.totalUploaded+=size;
+    // Uploads are measured per completed request. Each completed sample updates
+    // the meter and graph; the browser does not expose fetch upload byte progress.
+    setGauge(mbps,'Upload speed','Upload sample received');
+    addGraphPoint(mbps);
+    updatePhaseProgress(62,32,state.totalUploaded/6_762_000,'Measuring upload');
+    return {bytes:size,duration,mbps};
+  }
+  async function runUploadTest() {
+    state.phase='upload';state.phaseStart=performance.now();state.totalUploaded=0;state.sampledUploads=[];setStage('Measuring upload speed…',true);els.gaugeTitle.textContent='Upload speed';els.gaugeNote.textContent='Sending test data';
+    const sizes=[200_000,512_000,1_000_000,2_000_000,3_000_000];
+    for(let i=0;i<sizes.length;i++){
+      checkActive();
+      const elapsed=performance.now()-state.phaseStart;
+      if(elapsed>=MAX_UPLOAD_MS)break;
+      if(state.sampledUploads.length && elapsed>600){
+        const priorSpeed=median(state.sampledUploads.map(item=>item.mbps).filter(v=>v>0));
+        const projectedMs=priorSpeed ? sizes[i]*8/(priorSpeed*1000) : Infinity;
+        if(elapsed+projectedMs*1.25>MAX_UPLOAD_MS)break;
+      }
+      const sample=await uploadOne(sizes[i],i);
+      state.sampledUploads.push(sample);
+      const estimate=chooseBandwidth(state.sampledUploads,500_000);
+      if(estimate!==null){state.upload=estimate;setMetric(els.upload,estimate,1);}
+      if(performance.now()-state.phaseStart>=MAX_UPLOAD_MS)break;
+    }
+    const final=chooseBandwidth(state.sampledUploads,500_000);
+    if(final===null)throw new Error('The upload test did not complete enough data for a reliable measurement.');
+    state.upload=final;setMetric(els.upload,final,1);els.uploadCaption.textContent='Measured this run';
+    setGauge(final,'Upload speed','Upload test complete');setProgress(Math.max(state.progress,94),'Upload complete');
+  }
+
+  function startUI() {
+    state.running=true;state.controller=new AbortController();state.activeXhr=null;
+    state.phase='starting';state.currentSpeed=0;state.download=null;state.upload=null;state.ping=null;state.jitter=null;
+    state.pingSamples=[];state.graphPoints=[];state.graphStart=performance.now();state.lastGraphAt=0;state.totalDownloaded=0;state.totalUploaded=0;state.sampledDownloads=[];state.sampledUploads=[];state.edgeLocation='';
+    setMetric(els.download,null);setMetric(els.upload,null);setMetric(els.ping,null);setMetric(els.jitter,null);
+    els.downloadCaption.textContent='Receiving test data';els.uploadCaption.textContent='Sending test data';els.resultBadge.textContent='RUNNING';
+    els.graphEmpty.style.display='none';els.start.disabled=true;els.startText.textContent='Testing…';els.cancel.hidden=false;setProgress(0,'Starting test');setStage('Preparing test…',true);setGauge(0,'Connection test','Preparing a secure test connection');
+    drawGraph();updateConnectionDetails();
+  }
+  function stopUI() {
+    state.running=false;state.controller=null;state.activeXhr=null;els.start.disabled=false;els.startText.textContent='Run again';els.cancel.hidden=true;els.stageDot.classList.remove('pulse');updateConnectionDetails();
+  }
+  async function runTest() {
+    if(state.running)return;
+    if(!navigator.onLine){showToast('Your browser reports that it is offline. Reconnect and try again.',true);return;}
+    startUI();
+    try {
+      await runPingTest();
+      await runDownloadTest();
+      await runUploadTest();
+      checkActive();
+      state.phase='complete';setProgress(100,'Test complete');setStage('Test complete',false);els.resultBadge.textContent='COMPLETE';
+      setGauge(state.download||0,'Download speed','Finished · press Run again to retest');
+      const result={date:new Date().toISOString(),download:state.download,upload:state.upload,ping:state.ping,jitter:state.jitter,edge:state.edgeLocation||null};
+      state.history.unshift(result);state.history=state.history.slice(0,MAX_HISTORY);safeStorageWrite();renderHistory();
+      showToast('Speed test complete. Results saved in this browser.');
+    } catch(err) {
+      if(err && err.name==='AbortError'){
+        state.phase='cancelled';setStage('Test cancelled',false);els.resultBadge.textContent='CANCELLED';setProgress(state.progress,'Cancelled');setGauge(0,'Test cancelled','Press Run again when ready');showToast('Test cancelled.');
+      } else {
+        state.phase='error';setStage('Test could not finish',false);els.resultBadge.textContent='ERROR';setProgress(state.progress,'Test stopped');setGauge(0,'Test unavailable','Check the connection and try again');
+        const message=(err&&err.message)||'An unknown network error occurred.';
+        showToast(message,true);
+      }
+    } finally {stopUI();}
+  }
+  function cancelTest() {
+    if(!state.running)return;
+    if(state.controller)state.controller.abort();
+    if(state.activeXhr){try{state.activeXhr.abort();}catch(_){} }
+  }
+  function exportHistory() {
+    if(!state.history.length)return;
+    const columns=['Date','Download Mbps','Upload Mbps','Ping ms','Jitter ms','Edge'];
+    const rows=state.history.map(x=>[x.date,x.download,x.upload,x.ping,x.jitter,x.edge||'']);
+    const csv=[columns,...rows].map(row=>row.map(v=>{const s=String(v??'');return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(',')).join('\r\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='signal-speed-test-history.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+  }
+  function clearHistory() {
+    if(!state.history.length)return;
+    if(!confirm('Clear all saved speed-test history from this browser?'))return;
+    state.history=[];safeStorageWrite();renderHistory();showToast('Saved history cleared.');
+  }
+
+  els.start.addEventListener('click',runTest);els.cancel.addEventListener('click',cancelTest);els.exportBtn.addEventListener('click',exportHistory);els.clearBtn.addEventListener('click',clearHistory);
+  window.addEventListener('resize',()=>{drawGauge();drawGraph();});window.addEventListener('online',setOnlineStatus);window.addEventListener('offline',setOnlineStatus);
+  if(window.ResizeObserver){const ro=new ResizeObserver(()=>{drawGauge();drawGraph();});ro.observe(els.gauge);ro.observe(els.graph);}
+  state.history=safeStorageRead();updateStorageUI();setOnlineStatus();updateConnectionDetails();drawGauge();drawGraph();
+})();
+</script>
+</body>
+</html>

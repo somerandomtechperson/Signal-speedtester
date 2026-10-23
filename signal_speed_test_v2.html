@@ -273,11 +273,23 @@
     const s = a.slice().sort((x, y) => x - y), m = s.length >> 1;
     return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
   }
-  function meanAbsStep(a) {
-    if (a.length < 2) return 0;
-    let t = 0; for (let i = 1; i < a.length; i++) t += Math.abs(a[i] - a[i - 1]);
-    return t / (a.length - 1);
+function meanAbsStep(a) {
+  if (!Array.isArray(a)) return null;
+
+  const valid = a.filter(
+    value => Number.isFinite(value) && value >= 0
+  );
+
+  if (valid.length < 2) return null;
+
+  let total = 0;
+
+  for (let i = 1; i < valid.length; i++) {
+    total += Math.abs(valid[i] - valid[i - 1]);
   }
+
+  return total / (valid.length - 1);
+}
   function niceMax(v, steps) {
     const need = v * 1.12;
     for (const s of steps) if (s >= need) return s;
@@ -620,14 +632,64 @@ function browserName() {
     const dt = last.t - first.t;
     return dt < 50 ? 0 : (last.b - first.b) * 8 / (dt * 1000);   // Mbps
   }
-  function finalSpeed(samples) {
-    const last = samples[samples.length - 1];
-    if (!last || last.b <= 0 || last.t < 300) return null;
-    const startT = Math.min(RAMP_MS, last.t * 0.3);
-    const first = samples.find(s => s.t >= startT) || samples[0];
-    const dt = last.t - first.t;
-    return dt < 150 ? null : (last.b - first.b) * 8 / (dt * 1000);
+function finalSpeed(samples) {
+  if (!Array.isArray(samples) || samples.length < 3) {
+    return null;
   }
+
+  const valid = samples.filter(s =>
+    Number.isFinite(s.t) &&
+    Number.isFinite(s.b) &&
+    s.t >= 0 &&
+    s.b >= 0
+  );
+
+  if (valid.length < 3) return null;
+
+  const firstSample = valid[0];
+  const lastSample = valid[valid.length - 1];
+
+  // Require enough measurement time after ramp-up.
+  const startT = Math.max(firstSample.t, RAMP_MS);
+  const endT = lastSample.t;
+
+  if (endT - startT < 500) return null;
+
+  // Find/interpolate bytes transferred at the measurement boundary.
+  let startB = null;
+
+  for (let i = 1; i < valid.length; i++) {
+    const a = valid[i - 1];
+    const b = valid[i];
+
+    if (a.t <= startT && b.t >= startT && b.t > a.t) {
+      const ratio = (startT - a.t) / (b.t - a.t);
+      startB = a.b + (b.b - a.b) * ratio;
+      break;
+    }
+  }
+
+  if (startB === null) {
+    const nearest = valid.find(s => s.t >= startT);
+    if (!nearest) return null;
+    startB = nearest.b;
+  }
+
+  const endB = lastSample.b;
+  const elapsedMs = endT - startT;
+  const transferredBytes = endB - startB;
+
+  if (
+    !Number.isFinite(transferredBytes) ||
+    transferredBytes <= 0 ||
+    elapsedMs < 500
+  ) {
+    return null;
+  }
+
+  // Bytes * 8 / milliseconds / 1000 = Mbps.
+  return (transferredBytes * 8) / (elapsedMs * 1000);
+}
   function getPayload() {
     if (!S.payload) {
       const buf = new Uint8Array(8_000_000);
@@ -641,13 +703,37 @@ function browserName() {
     if (meter.errors >= 8 || (meter.bytes === 0 && meter.errors >= 3)) { meter.fatal = e; ctl.abort(); }
   }
 
-  async function pingOnce(signal, tag) {
-    const t = performance.now();
-    const r = await fetch(makeUrl(API_DOWN, { bytes: 0, r: uid() + tag }), { cache: 'no-store', signal });
-    if (!r.ok) throw new HttpError(r.status);
-    await r.arrayBuffer();
-    return performance.now() - t;
+async function pingOnce(signal, tag) {
+  const started = performance.now();
+
+  const response = await fetch(
+    makeUrl(API_DOWN, {
+      bytes: 0,
+      r: uid() + tag + '-' + started
+    }),
+    {
+      method: 'GET',
+      cache: 'no-store',
+      signal
+    }
+  );
+
+  if (!response.ok) {
+    throw new HttpError(response.status);
   }
+
+  // Consume the response before recording elapsed time.
+  await response.arrayBuffer();
+
+  const elapsed = performance.now() - started;
+
+  if (!Number.isFinite(elapsed) || elapsed <= 0) {
+    throw new Error('Invalid latency measurement.');
+  }
+
+  return elapsed;
+}
+
   async function runPing() {
     const sig = S.ctl.signal;
     S.phase = 'ping';

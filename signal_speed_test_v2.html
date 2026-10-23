@@ -259,7 +259,7 @@
     graph: { points: [], top: 10, topTarget: 10, xmax: 20, dirty: true },
     res: blankResults(),
     history: [], storageOk: true, toastTimer: 0,
-    colo: '', isp: '', uploadMode: 'xhr', payload: null, light: false
+    colo: '', isp: '', : 'xhr', payload: null, light: false
   };
   function blankResults() { return { down: null, up: null, ping: null, jitter: null, loadDown: null, loadUp: null, bytes: 0 }; }
 
@@ -907,16 +907,24 @@ async function uploadWorker(ctl, meter) {
     let inst = 0;
 
     const sample = () => {
-      const t = performance.now() - t0;
-      samples.push({ t, b: meter.bytes });
-      inst = windowSpeed(samples, 800);
-      setGaugeTarget(inst);
-      graphAdd(kind, inst);
-      S.res.bytes = S.bytesBefore + meter.bytes;
-      const frac = Math.max(t / dur, meter.bytes / cap);
-      setProgress(base + span * Math.min(1, frac), isDown ? 'Measuring download' : 'Measuring upload');
-      if (t >= dur || meter.bytes >= cap) ctl.abort();
-    };
+  const t = performance.now() - t0;
+  samples.push({ t, b: meter.bytes });
+
+  const rawSpeed = windowSpeed(samples, 800);
+  inst = inst === 0 ? rawSpeed : inst * 0.7 + rawSpeed * 0.3;
+
+  setGaugeTarget(inst);
+  graphAdd(kind, inst);
+  S.res.bytes = S.bytesBefore + meter.bytes;
+
+  const frac = Math.max(t / dur, meter.bytes / cap);
+  setProgress(
+    base + span * Math.min(1, frac),
+    isDown ? 'Measuring download' : 'Measuring upload'
+  );
+
+  if (t >= dur || meter.bytes >= cap) ctl.abort();
+};
     const timer = setInterval(sample, SAMPLE_MS);
     const workers = [loadedPingLoop(ctl, loaded)];
     for (let i = 0; i < P.streams; i++) workers.push(isDown ? downloadWorker(ctl, meter) : uploadWorker(ctl, meter));

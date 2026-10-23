@@ -793,27 +793,49 @@ async function pingOnce(signal, tag) {
       xhr.send(getPayload().subarray(0, size));
     });
   }
-  async function uploadWorker(ctl, meter) {
-    const sizes = S.uploadMode === 'xhr' ? [1e6, 4e6, 8e6] : [5e5, 1e6, 2e6];
-    let n = 0;
-    while (!ctl.signal.aborted) {
-      const size = sizes[Math.min(n++, sizes.length - 1)];
-      try {
-        if (S.uploadMode === 'xhr') {
-          await xhrUpload(size, ctl.signal, meter);
-        } else {
-          const r = await fetch(makeUrl(API_UP, { r: uid() }), { method: 'POST', body: getPayload().subarray(0, size), cache: 'no-store', signal: ctl.signal });
-          if (!r.ok) throw new HttpError(r.status);
-          await r.arrayBuffer();
-          meter.bytes += size;
+async function uploadWorker(ctl, meter) {
+  const sizes = S.uploadMode === 'xhr'
+    ? [1e6, 4e6, 8e6]
+    : [5e5, 1e6, 2e6];
+
+  let n = 0;
+
+  while (!ctl.signal.aborted) {
+    const size = sizes[Math.min(n++, sizes.length - 1)];
+
+    try {
+      if (S.uploadMode === 'xhr') {
+        await xhrUpload(size, ctl.signal, meter);
+      } else {
+        const payload = getPayload().subarray(0, size);
+
+        const r = await fetch(
+          makeUrl(API_UP, { r: uid() }),
+          {
+            method: 'POST',
+            body: payload,
+            cache: 'no-store',
+            signal: ctl.signal
+          }
+        );
+
+        if (!r.ok) {
+          throw new HttpError(r.status);
         }
-      } catch (e) {
-        if (ctl.signal.aborted) return;
-        workerFail(e, ctl, meter);
-        await sleep(250, ctl.signal);
+
+        await r.arrayBuffer();
+
+        // Count the payload only after the upload request succeeds.
+        meter.bytes += payload.byteLength;
       }
+    } catch (e) {
+      if (ctl.signal.aborted) return;
+
+      workerFail(e, ctl, meter);
+      await sleep(250, ctl.signal);
     }
   }
+}
   async function loadedPingLoop(ctl, out) {
     while (!ctl.signal.aborted) {
       try { out.push(await pingOnce(ctl.signal, 'l')); }

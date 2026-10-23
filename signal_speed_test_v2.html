@@ -347,20 +347,53 @@
     els.onlineDot.classList.toggle('offline', !on);
     els.onlineLabel.textContent = on ? 'Browser reports online' : 'Browser reports offline';
   }
-  function browserName() {
-    const ua = navigator.userAgent || '';
-    const b = navigator.userAgentData && navigator.userAgentData.brands;
-    if (Array.isArray(b)) {
-      const p = b.find(x => /Google Chrome|Microsoft Edge|Opera|Brave/i.test(x.brand));
-      if (p) return p.brand + ' ' + p.version;
+
+function browserName() {
+  const ua = navigator.userAgent || '';
+  const brands = navigator.userAgentData?.brands;
+
+  // Detect browsers using User-Agent Client Hints when available.
+  if (Array.isArray(brands)) {
+    const brandNames = brands.map(x => x.brand);
+
+    if (brandNames.some(x => /Microsoft Edge/i.test(x))) {
+      return 'Microsoft Edge';
     }
-    if (/Edg\//.test(ua)) return 'Microsoft Edge';
-    if (/OPR\//.test(ua)) return 'Opera';
-    if (/Firefox\//.test(ua)) return 'Firefox';
-    if (/Chrome\//.test(ua)) return 'Chrome / Chromium';
-    if (/Safari\//.test(ua)) return 'Safari';
-    return 'Web browser';
+    if (brandNames.some(x => /Opera/i.test(x))) {
+      return 'Opera';
+    }
+    if (brandNames.some(x => /Google Chrome/i.test(x))) {
+      return 'Google Chrome';
+    }
   }
+  // Detect specific browsers BEFORE generic Chromium browsers.
+  if (/EdgA\//i.test(ua)) return 'Microsoft Edge Mobile';
+  if (/EdgiOS\//i.test(ua)) return 'Microsoft Edge iOS';
+  if (/Edg\//i.test(ua)) return 'Microsoft Edge';
+
+  if (/OPR\//i.test(ua)) return 'Opera';
+  if (/Opera Mini/i.test(ua)) return 'Opera Mini';
+  if (/Opera/i.test(ua)) return 'Opera';
+
+  if (/SamsungBrowser\//i.test(ua)) return 'Samsung Internet';
+  if (/Vivaldi\//i.test(ua)) return 'Vivaldi';
+  if (/YaBrowser\//i.test(ua)) return 'Yandex Browser';
+  if (/DuckDuckGo\//i.test(ua)) return 'DuckDuckGo Browser';
+  if (/Brave/i.test(ua)) return 'Brave';
+
+  if (/CriOS\//i.test(ua)) return 'Google Chrome on iOS';
+  if (/FxiOS\//i.test(ua)) return 'Firefox on iOS';
+
+  if (/Firefox\//i.test(ua)) return 'Mozilla Firefox';
+  if (/Chromium\//i.test(ua)) return 'Chromium';
+  if (/Chrome\//i.test(ua)) return 'Google Chrome';
+
+  if (/MSIE |Trident\//i.test(ua)) return 'Internet Explorer';
+
+  if (/Safari\//i.test(ua)) return 'Apple Safari';
+
+  return 'Web browser (unidentified)';
+}
   function updateConnectionDetails() {
     const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     if (c) {
@@ -703,7 +736,7 @@
     }
   }
   async function chooseUploadMode() {
-    // Prefer XHR (gives real upload progress). If the browser blocks it (e.g. CORS preflight from file://), fall back to fetch.
+    // Prefer XHR (gives real upload progress). If the browser blocks it (e.g., CORS preflight from file://), fall back to fetch.
     try { await xhrUpload(20000, S.ctl.signal, { bytes: 0 }); S.uploadMode = 'xhr'; }
     catch (e) { ensureActive(); if (e instanceof HttpError) throw e; S.uploadMode = 'fetch'; }
     ensureActive();

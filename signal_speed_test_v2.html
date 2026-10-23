@@ -755,28 +755,66 @@ async function pingOnce(signal, tag) {
     setGaugeTarget(S.res.ping);
     els.gaugeNote.textContent = 'Median of ' + PING_COUNT + ' pings';
   }
+ 
+async function downloadWorker(ctl, meter) {
+  const sizes = [4e6, 16e6, 25e6];
+  let n = 0;
 
-  async function downloadWorker(ctl, meter) {
-    const sizes = [4e6, 16e6, 25e6];
-    let n = 0;
-    while (!ctl.signal.aborted) {
-      const size = sizes[Math.min(n++, sizes.length - 1)];
-      try {
-        const res = await fetch(makeUrl(API_DOWN, { bytes: size, r: uid() }), { cache: 'no-store', signal: ctl.signal });
-        if (!res.ok) throw new HttpError(res.status);
-        if (res.body && res.body.getReader) {
-          const reader = res.body.getReader();
-          for (;;) { const c = await reader.read(); if (c.done) break; meter.bytes += c.value.byteLength; }
-        } else {
-          meter.bytes += (await res.arrayBuffer()).byteLength;
+  while (!ctl.signal.aborted) {
+    const size = sizes[Math.min(n++, sizes.length - 1)];
+    let reader = null;
+
+    try {
+      const res = await fetch(
+        makeUrl(API_DOWN, { bytes: size, r: uid() }),
+        {
+          cache: 'no-store',
+          signal: ctl.signal
         }
-      } catch (e) {
+      );
+
+      if (!res.ok) {
+        throw new HttpError(res.status);
+      }
+
+      if (res.body && res.body.getReader) {
+        reader = res.body.getReader();
+
+        while (!ctl.signal.aborted) {
+          const chunk = await reader.read();
+
+          if (chunk.done) break;
+
+          meter.bytes += chunk.value.byteLength;
+        }
+
+        if (ctl.signal.aborted) {
+          try {
+            await reader.cancel();
+          } catch (_) {}
+          return;
+        }
+      } else {
+        const data = await res.arrayBuffer();
+
         if (ctl.signal.aborted) return;
-        workerFail(e, ctl, meter);
-        await sleep(250, ctl.signal);
+
+        meter.bytes += data.byteLength;
+      }
+    } catch (e) {
+      if (ctl.signal.aborted) return;
+
+      workerFail(e, ctl, meter);
+      await sleep(250, ctl.signal);
+    } finally {
+      if (reader) {
+        try {
+          reader.releaseLock();
+        } catch (_) {}
       }
     }
   }
+}
   function xhrUpload(size, signal, meter) {
     return new Promise((resolve, reject) => {
       if (signal.aborted) return resolve('aborted');

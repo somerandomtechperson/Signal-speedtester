@@ -1,1064 +1,850 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
-<title>Signal — Wifi Speed Test</title>
-<style>
-  :root{
-    color-scheme:dark;
-    --bg:#0a0f1a; --panel:#111a29; --border:rgba(169,190,220,.13); --text:#edf4ff; --muted:#95a5bd;
-    --blue:#65a9ff; --cyan:#54e1d2; --green:#8ce4b1; --orange:#f5c27b; --danger:#ff8d9b;
-    --shadow:0 18px 52px rgba(0,0,0,.22);
-  }
-  *{box-sizing:border-box}
-  html{min-height:100%;background:var(--bg)}
-  body{margin:0;min-height:100vh;min-height:100dvh;background:radial-gradient(ellipse at 12% 0%,rgba(44,105,184,.17),transparent 34rem),radial-gradient(ellipse at 88% 16%,rgba(40,190,177,.08),transparent 30rem),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:-.01em;-webkit-text-size-adjust:100%}
-  button{font:inherit}
-  .shell{max-width:1240px;margin:0 auto;padding:26px 26px 32px}
-  .topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 1px 26px;border-bottom:1px solid var(--border)}
-  .brand{display:flex;align-items:center;gap:12px;min-width:0}
-  .brand-icon{width:43px;height:43px;border:1px solid rgba(101,169,255,.27);border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,rgba(101,169,255,.18),rgba(84,225,210,.09));color:var(--blue);flex:none}
-  .brand h1{font-size:19px;line-height:1.1;margin:0;font-weight:740;letter-spacing:-.035em}
-  .brand p{margin:5px 0 0;color:var(--muted);font-size:12px;letter-spacing:.015em}
-  .top-status{display:flex;align-items:center;gap:9px;border:1px solid var(--border);border-radius:999px;padding:9px 13px;color:#bfd1e7;font-size:12px;background:rgba(17,26,41,.7);white-space:nowrap}
-  .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(140,228,177,.1)}
-  .dot.offline{background:var(--danger);box-shadow:0 0 0 4px rgba(255,141,155,.1)}
-  .intro{padding:28px 1px 23px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
-  .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:var(--cyan);font-weight:750;display:flex;align-items:center;gap:8px;margin-bottom:10px}
-  .eyebrow:before{content:"";width:18px;height:1px;background:var(--cyan)}
-  .intro h2{font-size:clamp(27px,4vw,39px);letter-spacing:-.055em;line-height:1.05;margin:0;font-weight:760}
-  .intro p{margin:10px 0 0;color:var(--muted);max-width:560px;font-size:14px;line-height:1.6}
-  .privacy-pill{display:flex;gap:8px;align-items:center;color:#a8bbd1;background:rgba(17,26,41,.76);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:11px;white-space:nowrap}
-  .layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(310px,.85fr);gap:17px;align-items:stretch}
-  .panel{border:1px solid var(--border);border-radius:21px;background:linear-gradient(155deg,rgba(19,30,48,.96),rgba(14,22,36,.98));box-shadow:var(--shadow);overflow:hidden;min-width:0}
-  .panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:19px 21px;border-bottom:1px solid var(--border)}
-  .panel-heading{display:flex;align-items:center;gap:10px;min-width:0}
-  .tiny-icon{width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:rgba(101,169,255,.1);color:var(--blue);flex:none}
-  .panel-head h3{font-size:14px;margin:0;font-weight:700;letter-spacing:-.02em}
-  .panel-head p{margin:4px 0 0;font-size:11px;color:var(--muted)}
-  .subtle-label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8fa4c0;font-weight:750}
-  .test-body{padding:15px 22px 21px}
-  .stage-row{display:flex;align-items:center;justify-content:center;gap:8px;font-size:11px;color:var(--muted);margin:2px 0 0;min-height:20px}
-  .stage-live{width:6px;height:6px;border-radius:50%;background:var(--cyan);display:inline-block}
-  .stage-live.pulse{animation:pulse 1.4s infinite}
-  @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(84,225,210,.28)}50%{opacity:.65;box-shadow:0 0 0 5px rgba(84,225,210,0)}}
-  .gauge-wrap{position:relative;max-width:500px;width:100%;height:230px;margin:0 auto 4px}
-  #gaugeCanvas{width:100%;height:100%;display:block}
-  .gauge-center{position:absolute;left:50%;bottom:20%;transform:translateX(-50%);width:68%;text-align:center;pointer-events:none}
-  .gauge-title{font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:#9db0c8;font-weight:780;margin-bottom:7px}
-  .gauge-number-row{display:flex;align-items:baseline;justify-content:center;gap:7px;line-height:1}
-  .gauge-number{font-size:clamp(44px,6.5vw,62px);font-weight:760;letter-spacing:-.075em;font-variant-numeric:tabular-nums;min-width:2ch}
-  .gauge-unit{font-size:14px;color:#a2b4cc;font-weight:650}
-  .gauge-note{font-size:11px;color:#859ab6;margin-top:8px;min-height:15px;line-height:1.3}
-  .actions{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:2px;flex-wrap:wrap}
-  .btn{border:1px solid transparent;border-radius:12px;padding:12px 19px;display:inline-flex;align-items:center;justify-content:center;gap:9px;font-size:12px;font-weight:750;cursor:pointer;transition:transform .15s ease,filter .15s ease;min-height:43px}
-  .btn:hover:not(:disabled){filter:brightness(1.08);transform:translateY(-1px)}
-  .btn:active:not(:disabled){transform:translateY(0)}
-  .btn:focus-visible,.icon-btn:focus-visible,.toggle input:focus-visible+span{outline:2px solid var(--cyan);outline-offset:3px}
-  .btn:disabled{opacity:.42;cursor:not-allowed}
-  .btn[hidden]{display:none!important}
-  .btn-primary{color:#081626;background:linear-gradient(100deg,#79b6ff,#6ce0d4);box-shadow:0 7px 25px rgba(69,158,216,.2);min-width:178px}
-  .btn-danger{color:#ffc0c8;border-color:rgba(255,141,155,.2);background:rgba(255,141,155,.06)}
-  .toggle{display:flex;align-items:center;justify-content:center;gap:8px;margin:14px auto 0;font-size:11px;color:#8ea3be;cursor:pointer;user-select:none;max-width:440px;text-align:left}
-  .toggle input{position:absolute;opacity:0;width:1px;height:1px}
-  .toggle span{display:flex;align-items:center;gap:9px;line-height:1.4}
-  .toggle span:before{content:"";width:28px;height:16px;border-radius:99px;background:#243148;flex:none;transition:background .15s;background-image:radial-gradient(circle at 8px 8px,#9fb3cc 5px,transparent 5.5px);background-repeat:no-repeat}
-  .toggle input:checked+span:before{background-color:#2c7a8c;background-image:radial-gradient(circle at 20px 8px,#e9f6ff 5px,transparent 5.5px)}
-  .toggle input:disabled+span{opacity:.5;cursor:not-allowed}
-  .progress-wrap{margin:17px auto 0;max-width:500px}
-  .progress-meta{display:flex;justify-content:space-between;gap:10px;font-size:10px;color:#8396b0;margin-bottom:7px}
-  .progress-track{width:100%;height:4px;border-radius:999px;background:#243148;overflow:hidden}
-  .progress-fill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,var(--blue),var(--cyan));transition:width .25s ease}
-  .test-footnote{text-align:center;color:#778ba6;font-size:10px;line-height:1.6;margin:13px auto 0;max-width:440px}
-  .right-stack{display:grid;gap:17px;grid-template-rows:auto auto 1fr}
-  .metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:14px}
-  .metric{position:relative;border:1px solid var(--border);border-radius:15px;padding:15px 14px 14px;background:rgba(8,15,26,.32);min-height:105px;overflow:hidden}
-  .metric:after{content:"";position:absolute;width:65px;height:65px;right:-30px;top:-32px;border-radius:50%;background:var(--glow,rgba(101,169,255,.12))}
-  .metric-label{font-size:11px;color:#9aadc5;display:flex;align-items:center;gap:7px}
-  .metric-icon{width:24px;height:24px;display:grid;place-items:center;border-radius:8px;background:rgba(101,169,255,.09);color:var(--blue)}
-  .metric-value{margin-top:12px;font-size:26px;font-weight:735;letter-spacing:-.055em;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
-  .metric-value .unit{font-size:10px;letter-spacing:0;color:#91a6c1;font-weight:650;margin-left:4px}
-  .metric-caption{font-size:10px;color:#788da8;margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .up .metric-icon{color:var(--cyan);background:rgba(84,225,210,.09)} .ping .metric-icon{color:var(--green);background:rgba(140,228,177,.09)} .jitter .metric-icon{color:var(--orange);background:rgba(245,194,123,.09)}
-  .verdict{margin:0 14px 14px;padding:11px 13px;border-radius:12px;border:1px solid var(--border);background:rgba(8,15,26,.32);font-size:11px;line-height:1.6;color:#a9bbd1}
-  .verdict[hidden]{display:none}
-  .verdict b{color:var(--text);font-weight:700}
-  .verdict .warn{color:var(--orange)}
-  .best-body{padding:15px 18px 16px}
-  .best-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid rgba(169,190,220,.08)}
-  .best-row:last-child{border-bottom:0;padding-bottom:0}
-  .best-name{color:#a5b5c9;font-size:11px;display:flex;align-items:center;gap:8px}
-  .best-val{font-weight:730;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
-  .best-val small{font-size:10px;color:#8da0ba;font-weight:600}
-  .details-body{padding:4px 18px 13px}
-  .detail-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(169,190,220,.07)}
-  .detail-row:last-child{border:0}
-  .detail-label{font-size:11px;color:#8ea3be;flex:none}
-  .detail-value{font-size:11px;color:#d6e2f2;text-align:right;max-width:63%;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
-  .detail-value.muted{color:#8094af}
-  .lower-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:17px;margin-top:17px}
-  .chart-head-right{display:flex;align-items:center;gap:13px;color:#97abc4;font-size:10px;white-space:nowrap}
-  .legend{display:inline-flex;align-items:center;gap:6px}
-  .legend-dot{width:7px;height:7px;border-radius:50%;background:var(--blue)}
-  .legend-dot.up{background:var(--cyan)}
-  .chart-wrap{position:relative;padding:7px 14px 9px;height:245px}
-  #graphCanvas{width:100%;height:100%;display:block}
-  .chart-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#7489a5;font-size:11px;text-align:center;padding:25px}
-  .history-head-actions{display:flex;align-items:center;gap:7px}
-  .icon-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:rgba(255,255,255,.025);border:1px solid var(--border);color:#a9bbd1;border-radius:9px;padding:7px 9px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap}
-  .icon-btn:hover:not(:disabled){border-color:rgba(101,169,255,.36);color:var(--text)}
-  .icon-btn:disabled{opacity:.4;cursor:not-allowed}
-  .history-wrap{padding:0 17px 14px;overflow:auto;max-height:330px}
-  table{width:100%;border-collapse:collapse;min-width:510px}
-  th{font-size:10px;color:#8197b2;text-transform:uppercase;letter-spacing:.08em;text-align:left;padding:12px 9px;font-weight:750;position:sticky;top:0;background:#121c2d}
-  td{padding:13px 9px;border-top:1px solid rgba(169,190,220,.08);font-size:11px;color:#d4e0ef;font-variant-numeric:tabular-nums}
-  td:first-child{color:#9bb0c9;white-space:nowrap}
-  .table-speed{font-weight:740}
-  .history-empty{padding:29px 10px 30px;text-align:center;color:#8297b1;font-size:11px;line-height:1.7}
-  .history-empty strong{display:block;color:#bdcce0;font-size:12px;margin-bottom:4px}
-  .bottom-note{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;color:#6f829d;font-size:10px;line-height:1.65;padding:19px 2px 0}
-  .bottom-note span{max-width:650px}
-  .toast{position:fixed;right:22px;bottom:22px;max-width:min(400px,calc(100vw - 32px));z-index:20;padding:13px 16px;border-radius:12px;border:1px solid var(--border);background:#18253a;color:#eaf3ff;box-shadow:var(--shadow);font-size:12px;line-height:1.45;opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .2s,transform .2s}
-  .toast.show{opacity:1;transform:translateY(0)}
-  .toast.error{border-color:rgba(255,141,155,.35)}
-  @media(max-width:820px){.layout{grid-template-columns:1fr}.right-stack{grid-template-rows:auto}.lower-grid{grid-template-columns:1fr}.shell{padding:20px 18px 27px}}
-  @media(max-width:680px){.shell{padding:15px 12px 22px}.topbar{padding-bottom:19px}.brand h1{font-size:17px}.top-status{padding:8px 10px;font-size:10px}.intro{display:block;padding:23px 1px 17px}.intro h2{font-size:31px}.intro p{font-size:13px}.privacy-pill{display:inline-flex;margin-top:15px}.panel{border-radius:17px}.test-body{padding:12px 14px 18px}.panel-head{padding:16px}.gauge-wrap{height:205px;max-width:430px}.gauge-center{width:78%}.gauge-number{font-size:50px}.metrics{padding:11px;gap:8px}.metric{min-height:98px;padding:13px 12px}.metric-value{font-size:24px}.lower-grid{margin-top:13px;gap:13px}.chart-wrap{height:225px;padding:6px 8px 10px}.panel-head .subtle-label{display:none}.bottom-note{display:block;padding-top:15px}.bottom-note span{display:block;margin-bottom:6px}.chart-head-right{gap:9px}.history-wrap{padding:0 11px 11px}.history-head-actions{gap:5px}.verdict{margin:0 11px 11px}}
-  @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.001ms!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Signal — Wifi Speed Test</title>
+  <style>
+    :root {
+      --bg: #0a0f1a;
+      --panel: #111a29;
+      --border: rgba(169,190,220,.13);
+      --text: #edf4ff;
+      --muted: #95a5bd;
+      --blue: #65a9ff;
+      --cyan: #54e1d2;
+      --green: #8ce4b1;
+      --orange: #f5c27b;
+      --danger: #ff8d9b;
+      --shadow: 0 18px 52px rgba(0,0,0,.22);
+    }
+
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: var(--bg); }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 12% 0%, rgba(44,105,184,.17), transparent 34rem),
+                  radial-gradient(ellipse at 88% 16%, rgba(40,190,177,.08), transparent 30rem),
+                  var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .shell {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 26px 26px 32px;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 21px;
+      background: linear-gradient(155deg, rgba(19,30,48,.96), rgba(14,22,36,.98));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 0 1px 26px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-icon {
+      width: 43px;
+      height: 43px;
+      border: 1px solid rgba(101,169,255,.27);
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(145deg, rgba(101,169,255,.18), rgba(84,225,210,.06));
+      color: var(--blue);
+      font-weight: 800;
+      font-size: 20px;
+    }
+
+    .brand h1 {
+      font-size: 19px;
+      line-height: 1.1;
+      margin: 0;
+      font-weight: 740;
+      letter-spacing: -.035em;
+    }
+
+    .brand p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .015em;
+      text-transform: uppercase;
+    }
+
+    .top-status {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 9px 13px;
+      color: #bfd1e7;
+      font-size: 12px;
+      background: rgba(17,26,41,.7);
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 4px rgba(140,228,177,.1);
+    }
+
+    .dot.offline {
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(255,141,155,.1);
+    }
+
+    .content {
+      padding: 22px;
+    }
+
+    .stage-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--muted);
+      margin: 2px 0 0;
+      min-height: 20px;
+    }
+
+    .stage-live {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      display: inline-block;
+    }
+
+    .stage-live.pulse {
+      animation: pulse 1.4s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(84,225,210,.28); }
+      50% { opacity: .65; box-shadow: 0 0 0 5px rgba(84,225,210,0); }
+    }
+
+    .gauge-wrap {
+      position: relative;
+      max-width: 500px;
+      width: 100%;
+      height: 230px;
+      margin: 0 auto 4px;
+    }
+
+    #gaugeCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .gauge-center {
+      position: absolute;
+      left: 50%;
+      bottom: 20%;
+      transform: translateX(-50%);
+      width: 68%;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .gauge-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .18em;
+      color: #9db0c8;
+      font-weight: 780;
+      margin-bottom: 7px;
+    }
+
+    .gauge-number-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 7px;
+      line-height: 1;
+    }
+
+    .gauge-number {
+      font-size: clamp(44px, 6.5vw, 62px);
+      font-weight: 760;
+      letter-spacing: -.075em;
+      font-variant-numeric: tabular-nums;
+      min-width: 2ch;
+    }
+
+    .gauge-unit {
+      font-size: 14px;
+      color: #a2b4cc;
+      font-weight: 650;
+    }
+
+    .gauge-note {
+      font-size: 11px;
+      color: #859ab6;
+      margin-top: 8px;
+      min-height: 15px;
+      line-height: 1.3;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 2px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 12px;
+      padding: 12px 19px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      font-size: 12px;
+      font-weight: 750;
+      cursor: pointer;
+      transition: filter .15s ease, transform .15s ease;
+      font-family: inherit;
+    }
+
+    .btn:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn:active:not(:disabled) { transform: translateY(0); }
+    .btn:disabled { opacity: .42; cursor: not-allowed; }
+    .btn[hidden] { display: none !important; }
+
+    .btn-primary {
+      color: #081626;
+      background: linear-gradient(100deg, #79b6ff, #6ce0d4);
+      box-shadow: 0 7px 25px rgba(69,158,216,.2);
+      min-width: 178px;
+    }
+
+    .btn-danger {
+      color: #ffc0c8;
+      border-color: rgba(255,141,155,.2);
+      background: rgba(255,141,155,.06);
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 14px auto 0;
+      font-size: 11px;
+      color: #8ea3be;
+      cursor: pointer;
+      user-select: none;
+      max-width: 440px;
+      text-align: center;
+    }
+
+    .toggle input {
+      accent-color: var(--cyan);
+    }
+
+    .progress-wrap {
+      margin: 17px auto 0;
+      max-width: 500px;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 10px;
+      color: #8396b0;
+      margin-bottom: 7px;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 4px;
+      border-radius: 999px;
+      background: #243148;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--blue), var(--cyan));
+      transition: width .25s ease;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .metric {
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 15px 14px 14px;
+      background: rgba(8,15,26,.32);
+      min-height: 105px;
+      overflow: hidden;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: #9aadc5;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .metric-icon {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: rgba(101,169,255,.09);
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    .metric-value {
+      margin-top: 12px;
+      font-size: 26px;
+      font-weight: 735;
+      letter-spacing: -.055em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .metric-value .unit {
+      font-size: 10px;
+      letter-spacing: 0;
+      color: #91a6c1;
+      font-weight: 650;
+      margin-left: 4px;
+    }
+
+    .metric-caption {
+      font-size: 10px;
+      color: #788da8;
+      margin-top: 7px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history {
+      margin-top: 22px;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+
+    .history-box {
+      max-height: 260px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(8,15,26,.24);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 510px;
+    }
+
+    th, td {
+      padding: 12px 10px;
+      text-align: left;
+      font-size: 11px;
+      border-bottom: 1px solid rgba(169,190,220,.08);
+      color: #d4e0ef;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #121c2d;
+      color: #8197b2;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 750;
+      font-size: 10px;
+    }
+
+    .empty {
+      padding: 28px 10px;
+      text-align: center;
+      color: #8297b1;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      max-width: min(400px, calc(100vw - 32px));
+      padding: 13px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #18253a;
+      color: #eaf3ff;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .2s ease, transform .2s ease;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 820px) {
+      .shell { padding: 20px 18px 27px; }
+      .metrics { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
-<div class="shell">
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-icon" aria-hidden="true">
-        <svg width="25" height="25" viewBox="0 0 24 24" fill="none"><path d="M3.2 8.9a13.2 13.2 0 0 1 17.6 0M6.5 12.3a8.2 8.2 0 0 1 11 0M9.6 15.5a3.7 3.7 0 0 1 4.8 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="19" r="1.25" fill="currentColor"/></svg>
-      </div>
-      <div><h1>Signal<span style="color:var(--cyan)">.</span></h1><p>WIFI PERFORMANCE LAB</p></div>
-    </div>
-    <div class="top-status"><span id="onlineDot" class="dot"></span><span id="onlineLabel">Checking connection…</span></div>
-  </header>
-
-  <section class="intro">
-    <div><div class="eyebrow">Connection diagnostics</div><h2>Your connection,<br>without the guesswork.</h2><p>Measure download, upload, latency, and jitter with a real live network test. No account, install, or terminal required. Simple as that.</p></div>
-    <div class="privacy-pill"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 5 6v5c0 4.4 2.8 7.7 7 10 4.2-2.3 7-5.6 7-10V6l-7-3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Local history · No account</div>
-  </section>
-
-  <main>
-    <div class="layout">
-      <section class="panel" aria-labelledby="testHeading">
-        <div class="panel-head">
-          <div class="panel-heading"><div class="tiny-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 17.5h2.5l2.2-7 3.2 9 2.4-12 2.1 7H20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h3 id="testHeading">Live speed test</h3><p>Real traffic · Cloudflare edge network</p></div></div>
-          <span class="subtle-label" id="testMode">READY</span>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">S</div>
+        <div>
+          <h1>Signal<span style="color:var(--cyan)">.</span></h1>
+          <p>Wifi performance lab</p>
         </div>
-        <div class="test-body">
-          <div class="stage-row" aria-live="polite"><span id="stageDot" class="stage-live"></span><span id="stageText">Ready when you are.</span></div>
-          <div class="gauge-wrap">
-            <canvas id="gaugeCanvas" role="img" aria-label="Live speedometer"></canvas>
-            <div class="gauge-center"><div class="gauge-title" id="gaugeTitle">Download speed</div><div class="gauge-number-row"><span class="gauge-number" id="gaugeNumber">0.0</span><span class="gauge-unit" id="gaugeUnit">Mbps</span></div><div class="gauge-note" id="gaugeNote">Press start to measure</div></div>
-          </div>
-          <div class="actions">
-            <button class="btn btn-primary" id="startBtn" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.8c0-.8.9-1.3 1.6-.9l9 6.1a1.2 1.2 0 0 1 0 2l-9 6.1c-.7.5-1.6 0-1.6-.9V5.8Z"/></svg><span id="startBtnText">Start speed test</span></button>
-            <button class="btn btn-danger" id="cancelBtn" type="button" hidden><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>Cancel</button>
-          </div>
-          <label class="toggle"><input type="checkbox" id="lightToggle"><span>Data saver — lighter test that uses far less data (but less accurate on very fast connections)</span></label>
-          <div class="progress-wrap"><div class="progress-meta"><span id="progressLabel">Test progress</span><span id="progressPercent">0%</span></div><div class="progress-track"><div class="progress-fill" id="progressFill"></div></div></div>
-          <p class="test-footnote" id="testFootnote"></p>
-        </div>
-      </section>
-
-      <div class="right-stack">
-        <section class="panel" aria-label="Latest results">
-          <div class="panel-head"><div class="panel-heading"><div class="tiny-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19V5m0 14h16M7 15l3.4-4.2 3 2.2L19 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h3>Result snapshot</h3><p>Most recent test</p></div></div><span class="subtle-label" id="resultBadge">NO DATA</span></div>
-          <div class="metrics">
-            <div class="metric down" style="--glow:rgba(101,169,255,.13)"><div class="metric-label"><span class="metric-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v13m-5-5 5 5 5-5M5 17v3h14v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Download</div><div class="metric-value"><span id="downloadValue">—</span><span class="unit">Mbps</span></div><div class="metric-caption" id="downloadCaption">Receiving test data</div></div>
-            <div class="metric up" style="--glow:rgba(84,225,210,.12)"><div class="metric-label"><span class="metric-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21V8m-5 5 5-5 5 5M5 7V4h14v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Upload</div><div class="metric-value"><span id="uploadValue">—</span><span class="unit">Mbps</span></div><div class="metric-caption" id="uploadCaption">Sending test data</div></div>
-            <div class="metric ping" style="--glow:rgba(140,228,177,.12)"><div class="metric-label"><span class="metric-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>Ping</div><div class="metric-value"><span id="pingValue">—</span><span class="unit">ms</span></div><div class="metric-caption">Idle round-trip latency</div></div>
-            <div class="metric jitter" style="--glow:rgba(245,194,123,.12)"><div class="metric-label"><span class="metric-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 12h4l2.2-5 4.2 10 2.2-5h4.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Jitter</div><div class="metric-value"><span id="jitterValue">—</span><span class="unit">ms</span></div><div class="metric-caption">Variation between pings</div></div>
-          </div>
-          <div class="verdict" id="verdict" hidden></div>
-        </section>
-
-        <section class="panel" aria-labelledby="bestHeading">
-          <div class="panel-head"><div class="panel-heading"><div class="tiny-icon" style="color:var(--orange);background:rgba(245,194,123,.09)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div><div><h3 id="bestHeading">Your best results</h3><p>Personal records on this browser</p></div></div></div>
-          <div class="best-body">
-            <div class="best-row"><span class="best-name"><span style="color:var(--blue)">↓</span> Best download</span><span class="best-val" id="bestDownload">— <small>Mbps</small></span></div>
-            <div class="best-row"><span class="best-name"><span style="color:var(--cyan)">↑</span> Best upload</span><span class="best-val" id="bestUpload">— <small>Mbps</small></span></div>
-            <div class="best-row"><span class="best-name"><span style="color:var(--green)">◷</span> Lowest ping</span><span class="best-val" id="bestPing">— <small>ms</small></span></div>
-          </div>
-        </section>
-
-        <section class="panel" aria-labelledby="detailsHeading">
-          <div class="panel-head"><div class="panel-heading"><div class="tiny-icon" style="color:var(--cyan);background:rgba(84,225,210,.08)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 20h8m-4-4v4M7.5 8.5h9m-9 3h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><div><h3 id="detailsHeading">Connection details</h3><p>What this browser can see</p></div></div></div>
-          <div class="details-body">
-            <div class="detail-row"><span class="detail-label">Test server</span><span class="detail-value" id="serverValue">Cloudflare · automatic</span></div>
-            <div class="detail-row"><span class="detail-label">Your network</span><span class="detail-value muted" id="ispValue">Detected when a test runs</span></div>
-            <div class="detail-row"><span class="detail-label">Latency under load</span><span class="detail-value muted" id="loadedValue">—</span></div>
-            <div class="detail-row"><span class="detail-label">Data used</span><span class="detail-value muted" id="dataValue">—</span></div>
-            <div class="detail-row"><span class="detail-label">Network hint</span><span class="detail-value muted" id="networkValue">Checking…</span></div>
-            <div class="detail-row"><span class="detail-label">Browser</span><span class="detail-value" id="browserValue">Detecting…</span></div>
-          </div>
-        </section>
       </div>
-    </div>
+      <div class="top-status"><span id="onlineDot" class="dot"></span><span id="onlineLabel">Checking connection…</span></div>
+    </header>
 
-    <div class="lower-grid">
-      <section class="panel" aria-labelledby="graphHeading">
-        <div class="panel-head"><div class="panel-heading"><div class="tiny-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 18V6m0 12h16M7 14l3.5-4 3 2 4.5-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h3 id="graphHeading">Live speed trend</h3><p>Throughput during this run (Mbps)</p></div></div><div class="chart-head-right"><span class="legend"><span class="legend-dot"></span>Download</span><span class="legend"><span class="legend-dot up"></span>Upload</span></div></div>
-        <div class="chart-wrap"><canvas id="graphCanvas" role="img" aria-label="Live download and upload graph"></canvas><div class="chart-empty" id="graphEmpty">Your live measurements will draw here<br>when a test begins.</div></div>
-      </section>
-      <section class="panel" aria-labelledby="historyHeading">
-        <div class="panel-head"><div class="panel-heading"><div class="tiny-icon" style="color:var(--green);background:rgba(140,228,177,.09)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M6 4h12M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9M9 13v4m6-4v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h3 id="historyHeading">Test history</h3><p id="historySubtitle">Saved on this device</p></div></div><div class="history-head-actions"><button class="icon-btn" id="exportBtn" type="button" title="Download history as CSV" disabled>Export CSV</button><button class="icon-btn" id="clearBtn" type="button" title="Clear saved test history" disabled>Clear</button></div></div>
-        <div class="history-wrap" id="historyContent"></div>
-      </section>
-    </div>
-  </main>
+    <main class="content">
+      <div class="stage-row" aria-live="polite"><span id="stageDot" class="stage-live"></span><span id="stageText">Ready when you are.</span></div>
 
-  <footer class="bottom-note"><span>Measurements use public Cloudflare speed-test endpoints. Browsers don't expose Wi-Fi signal strength or the router's link rate, so this measures end-to-end Wifi throughput. Keep this tab in front while testing, since browsers throttle background tabs.</span><span id="storageNote">Saved locally in this browser when supported.</span></footer>
-</div>
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
+      <div class="gauge-wrap">
+        <canvas id="gaugeCanvas" role="img" aria-label="Live speedometer"></canvas>
+        <div class="gauge-center">
+          <div class="gauge-title" id="gaugeTitle">Download speed</div>
+          <div class="gauge-number-row">
+            <span class="gauge-number" id="gaugeNumber">0.0</span>
+            <span class="gauge-unit" id="gaugeUnit">Mbps</span>
+          </div>
+          <div class="gauge-note" id="gaugeNote">Press start to measure.</div>
+        </div>
+      </div>
 
-<script>
-(() => {
-  'use strict';
+      <div class="actions">
+        <button class="btn btn-primary" id="startBtn" type="button">Start speed test</button>
+        <button class="btn btn-danger" id="cancelBtn" type="button" hidden>Cancel</button>
+      </div>
 
-  /* ---------- Configuration ---------- */
-  const API_DOWN = 'https://speed.cloudflare.com/__down';
-  const API_UP = 'https://speed.cloudflare.com/__up';
-  const API_META = 'https://speed.cloudflare.com/meta';
-  const STORAGE_KEY = 'signal-speedtest-history-v1';   // same key as v1 so old history carries over
-  const PREF_KEY = 'signal-speedtest-light';
-  const MAX_HISTORY = 20;
-  const PING_COUNT = 12;
-  const RAMP_MS = 1500;          // initial TCP slow-start period excluded from the final average
-  const SAMPLE_MS = 100;
-  const SPEED_STEPS = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
-  const PING_STEPS = [50, 100, 200, 500, 1000];
-  const PROFILES = {
-    full:  { dlMs: 9000, ulMs: 8000, dlCap: 300e6, ulCap: 100e6, streams: 4, label: 'about 20 seconds and up to ~400 MB on very fast connections (far less on slower ones)' },
-    light: { dlMs: 6000, ulMs: 5000, dlCap: 40e6,  ulCap: 15e6,  streams: 3, label: 'about 15 seconds and up to ~55 MB' }
-  };
-  const REDUCED = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+      <label class="toggle"><input type="checkbox" id="lightToggle"><span>Data saver mode</span></label>
 
-  /* ---------- Helpers ---------- */
-  class HttpError extends Error { constructor(status) { super('HTTP ' + status); this.status = status; } }
-  const abortError = () => new DOMException('Test cancelled', 'AbortError');
-  const $ = (id) => document.getElementById(id);
-  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
-  const els = {};
-  ['startBtn','startBtnText','cancelBtn','testMode','stageText','stageDot','gaugeCanvas','gaugeTitle','gaugeNumber','gaugeUnit','gaugeNote',
-   'progressLabel','progressPercent','progressFill','downloadValue','uploadValue','pingValue','jitterValue','downloadCaption','uploadCaption',
-   'resultBadge','bestDownload','bestUpload','bestPing','graphCanvas','graphEmpty','historyContent','historySubtitle','exportBtn','clearBtn',
-   'onlineDot','onlineLabel','networkValue','browserValue','serverValue','ispValue','loadedValue','dataValue','toast','storageNote','verdict',
-   'lightToggle','testFootnote'].forEach(id => els[id] = $(id));
+      <div class="progress-wrap">
+        <div class="progress-meta"><span id="progressLabel">Test progress</span><span id="progressPercent">0%</span></div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
 
-  const S = {
-    running: false, ctl: null, reason: '', phase: 'idle', progress: 0, t0: 0,
-    gauge: { value: 0, target: 0, max: 10, maxTarget: 10, unit: 'Mbps', steps: SPEED_STEPS },
-    graph: { points: [], top: 10, topTarget: 10, xmax: 20, dirty: true },
-    res: blankResults(),
-    history: [], storageOk: true, toastTimer: 0,
-    colo: '', isp: '', : 'xhr', payload: null, light: false
-  };
-  function blankResults() { return { down: null, up: null, ping: null, jitter: null, loadDown: null, loadUp: null, bytes: 0 }; }
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-label"><span class="metric-icon">↓</span> Download</div>
+          <div class="metric-value"><span id="downloadValue">—</span><span class="unit">Mbps</span></div>
+          <div class="metric-caption" id="downloadCaption">Waiting for result</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label"><span class="metric-icon">↑</span> Upload</div>
+          <div class="metric-value"><span id="uploadValue">—</span><span class="unit">Mbps</span></div>
+          <div class="metric-caption" id="uploadCaption">Waiting for result</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label"><span class="metric-icon">◌</span> Ping</div>
+          <div class="metric-value"><span id="pingValue">—</span><span class="unit">ms</span></div>
+          <div class="metric-caption">Round-trip latency</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label"><span class="metric-icon">⟡</span> Jitter</div>
+          <div class="metric-value"><span id="jitterValue">—</span><span class="unit">ms</span></div>
+          <div class="metric-caption">Variance between pings</div>
+        </div>
+      </div>
 
-  function num(v, d = 1) {
-    if (!Number.isFinite(v) || v < 0) return '—';
-    if (v >= 1000) return Math.round(v).toLocaleString();
-    return v.toFixed(d);
-  }
-  function median(a) {
-    if (!a.length) return null;
-    const s = a.slice().sort((x, y) => x - y), m = s.length >> 1;
-    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-  }
-function meanAbsStep(a) {
-  if (!Array.isArray(a)) return null;
+      <div class="history">
+        <div class="history-box" id="historyContent"></div>
+      </div>
+    </main>
+  </div>
 
-  const valid = a.filter(
-    value => Number.isFinite(value) && value >= 0
-  );
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  if (valid.length < 2) return null;
+  <script>
+    (() => {
+      'use strict';
 
-  let total = 0;
+      const STORAGE_KEY = 'signal-speedtest-history-v1';
+      const API_DOWN = 'https://speed.cloudflare.com/__down';
+      const API_UP = 'https://speed.cloudflare.com/__up';
+      const MAX_HISTORY = 10;
 
-  for (let i = 1; i < valid.length; i++) {
-    total += Math.abs(valid[i] - valid[i - 1]);
-  }
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        onlineDot: $('onlineDot'),
+        onlineLabel: $('onlineLabel'),
+        stageDot: $('stageDot'),
+        stageText: $('stageText'),
+        gaugeCanvas: $('gaugeCanvas'),
+        gaugeTitle: $('gaugeTitle'),
+        gaugeNumber: $('gaugeNumber'),
+        gaugeUnit: $('gaugeUnit'),
+        gaugeNote: $('gaugeNote'),
+        startBtn: $('startBtn'),
+        cancelBtn: $('cancelBtn'),
+        lightToggle: $('lightToggle'),
+        progressLabel: $('progressLabel'),
+        progressPercent: $('progressPercent'),
+        progressFill: $('progressFill'),
+        downloadValue: $('downloadValue'),
+        uploadValue: $('uploadValue'),
+        pingValue: $('pingValue'),
+        jitterValue: $('jitterValue'),
+        downloadCaption: $('downloadCaption'),
+        uploadCaption: $('uploadCaption'),
+        historyContent: $('historyContent'),
+        toast: $('toast')
+      };
 
-  return total / (valid.length - 1);
-}
-  function niceMax(v, steps) {
-    const need = v * 1.12;
-    for (const s of steps) if (s >= need) return s;
-    const last = steps[steps.length - 1];
-    return last * Math.ceil(need / last);
-  }
-  function fmtBytes(b) { return b >= 1e9 ? (b / 1e9).toFixed(2) + ' GB' : b >= 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.round(b / 1e3) + ' KB'; }
-  function formatDate(iso) {
-    try { return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }
-    catch (_) { return String(iso || ''); }
-  }
-  function makeUrl(base, params) {
-    const u = new URL(base);
-    for (const k in params) u.searchParams.set(k, String(params[k]));
-    return u.toString();
-  }
-  function sleep(ms, sig) {
-    return new Promise(res => {
-      if (sig && sig.aborted) return res();
-      let id;
-      const done = () => { clearTimeout(id); if (sig) sig.removeEventListener('abort', done); res(); };
-      id = setTimeout(done, ms);
-      if (sig) sig.addEventListener('abort', done, { once: true });
-    });
-  }
-  function ensureActive() { if (!S.running || !S.ctl || S.ctl.signal.aborted) throw abortError(); }
-  function showToast(msg, error = false) {
-    clearTimeout(S.toastTimer);
-    els.toast.textContent = msg;
-    els.toast.classList.toggle('error', error);
-    els.toast.classList.add('show');
-    S.toastTimer = setTimeout(() => els.toast.classList.remove('show'), 5200);
-  }
-  function friendlyError(e) {
-    if (e instanceof HttpError) return 'The test server replied with ' + e.message + '. Please try again in a moment.';
-    if (e instanceof TypeError || /fetch|network|load failed/i.test(String(e && e.message))) {
-      return "Couldn't reach Cloudflare's speed-test servers. Check your connection — a VPN, firewall or ad blocker may be blocking speed.cloudflare.com.";
-    }
-    return (e && e.message) || 'An unknown network error occurred.';
-  }
-  const profile = () => (S.light ? PROFILES.light : PROFILES.full);
+      const S = {
+        running: false,
+        controller: null,
+        light: false,
+        history: [],
+        toastTimer: 0,
+        gauge: { value: 0, max: 10 }
+      };
 
-  /* ---------- Storage ---------- */
-  function storageRead() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      const p = JSON.parse(raw);
-      return Array.isArray(p) ? p.filter(x => x && Number.isFinite(x.download) && Number.isFinite(x.upload)).slice(0, MAX_HISTORY) : [];
-    } catch (_) { S.storageOk = false; return []; }
-  }
-  function storageWrite() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(S.history)); S.storageOk = true; }
-    catch (_) { S.storageOk = false; }
-    updateStorageNote();
-  }
-  function prefRead() { try { return localStorage.getItem(PREF_KEY) === '1'; } catch (_) { return false; } }
-  function prefWrite(v) { try { localStorage.setItem(PREF_KEY, v ? '1' : '0'); } catch (_) { /* ignore */ } }
-  function updateStorageNote() {
-    els.storageNote.textContent = S.storageOk ? 'History is stored locally in this browser.' : 'This browser restricts local storage; history may last only until this page closes.';
-    els.historySubtitle.textContent = S.storageOk ? 'Saved on this device' : 'This session only · storage restricted';
-  }
-
-  /* ---------- Status / details ---------- */
-  function setOnlineStatus() {
-    const on = navigator.onLine;
-    els.onlineDot.classList.toggle('offline', !on);
-    els.onlineLabel.textContent = on ? 'Browser reports online' : 'Browser reports offline';
-  }
-
-function browserName() {
-  const ua = navigator.userAgent || '';
-  const brands = navigator.userAgentData?.brands;
-
-  // Detect browsers using User-Agent Client Hints when available.
-  if (Array.isArray(brands)) {
-    const brandNames = brands.map(x => x.brand);
-
-    if (brandNames.some(x => /Microsoft Edge/i.test(x))) {
-      return 'Microsoft Edge';
-    }
-    if (brandNames.some(x => /Opera/i.test(x))) {
-      return 'Opera';
-    }
-    if (brandNames.some(x => /Google Chrome/i.test(x))) {
-      return 'Google Chrome';
-    }
-  }
-  // Detect specific browsers BEFORE generic Chromium browsers.
-  if (/EdgA\//i.test(ua)) return 'Microsoft Edge Mobile';
-  if (/EdgiOS\//i.test(ua)) return 'Microsoft Edge iOS';
-  if (/Edg\//i.test(ua)) return 'Microsoft Edge';
-
-  if (/OPR\//i.test(ua)) return 'Opera';
-  if (/Opera Mini/i.test(ua)) return 'Opera Mini';
-  if (/Opera/i.test(ua)) return 'Opera';
-
-  if (/SamsungBrowser\//i.test(ua)) return 'Samsung Internet';
-  if (/Vivaldi\//i.test(ua)) return 'Vivaldi';
-  if (/YaBrowser\//i.test(ua)) return 'Yandex Browser';
-  if (/DuckDuckGo\//i.test(ua)) return 'DuckDuckGo Browser';
-  if (/Brave/i.test(ua)) return 'Brave';
-
-  if (/CriOS\//i.test(ua)) return 'Google Chrome on iOS';
-  if (/FxiOS\//i.test(ua)) return 'Firefox on iOS';
-
-  if (/Firefox\//i.test(ua)) return 'Mozilla Firefox';
-  if (/Chromium\//i.test(ua)) return 'Chromium';
-  if (/Chrome\//i.test(ua)) return 'Google Chrome';
-
-  if (/MSIE |Trident\//i.test(ua)) return 'Internet Explorer';
-
-  if (/Safari\//i.test(ua)) return 'Apple Safari';
-
-  return 'Web browser (unidentified)';
-}
-  function updateConnectionDetails() {
-    const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    if (c) {
-      const parts = [];
-      if (c.effectiveType) parts.push(c.effectiveType.toUpperCase());
-      if (Number.isFinite(c.downlink)) parts.push('browser hint ' + c.downlink + ' Mbps');
-      if (Number.isFinite(c.rtt)) parts.push('RTT ' + c.rtt + ' ms');
-      if (c.saveData) parts.push('Data Saver on');
-      els.networkValue.textContent = parts.join(' · ') || 'Network API available';
-    } else {
-      els.networkValue.textContent = 'Not exposed by this browser';
-    }
-    els.browserValue.textContent = browserName();
-    els.serverValue.textContent = S.colo ? 'Cloudflare · ' + S.colo : 'Cloudflare · automatic';
-    els.ispValue.textContent = S.isp || 'Detected when a test runs';
-  }
-  async function loadMeta(signal) {
-    // Best-effort: this endpoint may be unavailable cross-origin; failure is harmless.
-    try {
-      const c = new AbortController();
-      const kill = setTimeout(() => c.abort(), 4000);
-      const link = () => c.abort();
-      signal.addEventListener('abort', link, { once: true });
-      const r = await fetch(API_META, { cache: 'no-store', signal: c.signal });
-      clearTimeout(kill); signal.removeEventListener('abort', link);
-      if (!r.ok) return;
-      const m = await r.json();
-      const colo = typeof m.colo === 'string' ? m.colo : (m.colo && (m.colo.iata || m.colo.city));
-      if (colo) S.colo = colo;
-      if (m.asOrganization) S.isp = m.asOrganization + (m.asn ? ' (AS' + m.asn + ')' : '');
-      updateConnectionDetails();
-    } catch (_) { /* ignore */ }
-  }
-
-  /* ---------- UI state helpers ---------- */
-  function setStage(text, running) {
-    els.stageText.textContent = text;
-    els.stageDot.classList.toggle('pulse', !!running);
-    els.testMode.textContent = running ? 'RUNNING' : ({ complete: 'COMPLETE', error: 'ERROR', cancelled: 'CANCELLED' }[S.phase] || 'READY');
-  }
-  function setProgress(v, label) {
-    S.progress = Math.max(S.progress * (S.running ? 1 : 0), Math.min(100, v));
-    if (!S.running) S.progress = Math.min(100, v);
-    els.progressFill.style.width = S.progress + '%';
-    els.progressPercent.textContent = Math.round(S.progress) + '%';
-    if (label) els.progressLabel.textContent = label;
-  }
-  function resetGauge(unit, steps, title, note) {
-    const g = S.gauge;
-    g.unit = unit; g.steps = steps; g.value = 0; g.target = 0; g.max = steps[0]; g.maxTarget = steps[0];
-    els.gaugeUnit.textContent = unit;
-    els.gaugeTitle.textContent = title;
-    els.gaugeNote.textContent = note;
-    els.gaugeNumber.textContent = '0.0';
-  }
-  function setGaugeTarget(v) {
-    const g = S.gauge;
-    g.target = Math.max(0, v);
-    g.maxTarget = Math.max(g.maxTarget, niceMax(g.target, g.steps));
-  }
-  function renderMetrics() {
-    const r = S.res;
-    els.downloadValue.textContent = r.down == null ? '—' : num(r.down, 1);
-    els.uploadValue.textContent = r.up == null ? '—' : num(r.up, 1);
-    els.pingValue.textContent = r.ping == null ? '—' : num(r.ping, 1);
-    els.jitterValue.textContent = r.jitter == null ? '—' : num(r.jitter, 1);
-  }
-  function renderLoaded() {
-    const r = S.res, p = [];
-    if (r.loadDown != null) p.push('↓ ' + Math.round(r.loadDown) + ' ms');
-    if (r.loadUp != null) p.push('↑ ' + Math.round(r.loadUp) + ' ms');
-    els.loadedValue.textContent = p.length ? p.join(' · ') : '—';
-    els.dataValue.textContent = r.bytes > 0 ? fmtBytes(r.bytes) : '—';
-  }
-
-  /* ---------- Rendering loop (eased gauge + graph) ---------- */
-  function tick() {
-    const g = S.gauge, gr = S.graph;
-    let gaugeChanged = false;
-    const k = REDUCED ? 1 : 0.2;
-    let nv = Math.abs(g.target - g.value) < 0.004 ? g.target : g.value + (g.target - g.value) * k;
-    if (nv !== g.value) { g.value = nv; gaugeChanged = true; }
-    let nm = Math.abs(g.maxTarget - g.max) < 0.01 ? g.maxTarget : g.max + (g.maxTarget - g.max) * (REDUCED ? 1 : 0.1);
-    if (nm !== g.max) { g.max = nm; gaugeChanged = true; }
-    if (gaugeChanged) { els.gaugeNumber.textContent = num(g.value, 1); drawGauge(); }
-    let nt = Math.abs(gr.topTarget - gr.top) < 0.01 ? gr.topTarget : gr.top + (gr.topTarget - gr.top) * (REDUCED ? 1 : 0.12);
-    if (nt !== gr.top) { gr.top = nt; gr.dirty = true; }
-    if (gr.dirty) { gr.dirty = false; drawGraph(); }
-    requestAnimationFrame(tick);
-  }
-
-  function prepCanvas(c) {
-    const rect = c.getBoundingClientRect();
-    if (!rect.width || !rect.height) return null;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const W = Math.round(rect.width * dpr), H = Math.round(rect.height * dpr);
-    if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
-    const ctx = c.getContext('2d');
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, rect.width, rect.height);
-    return { ctx, w: rect.width, h: rect.height };
-  }
-
-  function drawGauge() {
-    const p = prepCanvas(els.gaugeCanvas); if (!p) return;
-    const { ctx, w, h } = p, g = S.gauge;
-    const cx = w / 2, cy = h * 0.8, r = Math.min(w * 0.42, h * 0.72), line = Math.max(9, Math.min(13, w * 0.027));
-    ctx.lineCap = 'round';
-    ctx.lineWidth = line;
-    ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI * 2); ctx.strokeStyle = 'rgba(123,150,188,.15)'; ctx.stroke();
-    for (let i = 0; i <= 20; i++) {
-      const a = Math.PI + Math.PI * i / 20, inner = r - line - 6, outer = r - line - 0;
-      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner); ctx.lineTo(cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
-      ctx.lineWidth = 1; ctx.strokeStyle = i % 5 === 0 ? 'rgba(169,194,225,.45)' : 'rgba(169,194,225,.17)'; ctx.stroke();
-    }
-    const frac = Math.max(0, Math.min(1, g.max > 0 ? g.value / g.max : 0));
-    if (frac > 0.002) {
-      const grad = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
-      grad.addColorStop(0, '#65a9ff'); grad.addColorStop(1, '#54e1d2');
-      ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI + Math.PI * frac);
-      ctx.lineWidth = line; ctx.strokeStyle = grad; ctx.stroke();
-    }
-    const ang = Math.PI + Math.PI * frac;
-    ctx.beginPath(); ctx.arc(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r, 3, 0, Math.PI * 2); ctx.fillStyle = '#e9f6ff'; ctx.fill();
-    ctx.font = '10px system-ui, sans-serif'; ctx.fillStyle = '#6f85a2'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('0', cx - r, cy + line + 6);
-    ctx.fillText(num(g.max, 0), cx + r, cy + line + 6);
-  }
-
-  function drawGraph() {
-    const p = prepCanvas(els.graphCanvas); if (!p) return;
-    const { ctx, w, h } = p, gr = S.graph;
-    const pad = { l: 43, r: 12, t: 12, b: 25 }, cw = Math.max(1, w - pad.l - pad.r), ch = Math.max(1, h - pad.t - pad.b);
-    const top = Math.max(1, gr.top), xmax = gr.xmax;
-    ctx.font = '10px system-ui, sans-serif'; ctx.textBaseline = 'middle';
-    for (let i = 0; i <= 4; i++) {
-      const y = pad.t + ch * i / 4;
-      ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.strokeStyle = 'rgba(149,170,201,.11)'; ctx.lineWidth = 1; ctx.stroke();
-      ctx.fillStyle = '#6f85a2'; ctx.textAlign = 'right'; ctx.fillText(num(top * (1 - i / 4), 0), pad.l - 9, y);
-    }
-    for (let i = 0; i <= 4; i++) {
-      const x = pad.l + cw * i / 4;
-      ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, h - pad.b); ctx.strokeStyle = 'rgba(149,170,201,.07)'; ctx.stroke();
-      ctx.fillStyle = '#6f85a2'; ctx.textAlign = 'center'; ctx.fillText(Math.round(xmax * i / 4) + 's', x, h - 10);
-    }
-    const pts = gr.points;
-    const X = t => pad.l + Math.max(0, Math.min(1, t / xmax)) * cw;
-    const Y = v => pad.t + ch - Math.min(top, v) / top * ch;
-    function series(key, color) {
-      let active = false, last = null;
-      ctx.beginPath(); ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-      for (const q of pts) {
-        const v = q[key];
-        if (!Number.isFinite(v)) { active = false; continue; }
-        if (!active) { ctx.moveTo(X(q.t), Y(v)); active = true; } else ctx.lineTo(X(q.t), Y(v));
-        last = q;
+      function setOnlineStatus() {
+        const online = navigator.onLine;
+        els.onlineDot.classList.toggle('offline', !online);
+        els.onlineLabel.textContent = online ? 'Browser reports online' : 'Browser reports offline';
       }
-      ctx.strokeStyle = color; ctx.stroke();
-      if (last && S.running && S.phase === (key === 'down' ? 'download' : 'upload')) {
-        ctx.beginPath(); ctx.arc(X(last.t), Y(last[key]), 3.2, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+
+      function showToast(message) {
+        clearTimeout(S.toastTimer);
+        els.toast.textContent = message;
+        els.toast.classList.add('show');
+        S.toastTimer = setTimeout(() => els.toast.classList.remove('show'), 3200);
       }
-    }
-    series('down', '#65a9ff'); series('up', '#54e1d2');
-  }
-  function graphAdd(kind, v) {
-    const gr = S.graph;
-    const pt = { t: (performance.now() - S.t0) / 1000, down: null, up: null };
-    pt[kind === 'download' ? 'down' : 'up'] = v;
-    gr.points.push(pt);
-    if (gr.points.length > 600) gr.points.splice(0, gr.points.length - 600);
-    gr.topTarget = Math.max(gr.topTarget, niceMax(v, SPEED_STEPS));
-    gr.dirty = true;
-    els.graphEmpty.style.display = 'none';
-  }
 
-  /* ---------- History UI ---------- */
-  function renderHistory() {
-    const hs = S.history;
-    els.exportBtn.disabled = !hs.length; els.clearBtn.disabled = !hs.length;
-    const d = hs.map(x => x.download).filter(Number.isFinite), u = hs.map(x => x.upload).filter(Number.isFinite), pg = hs.map(x => x.ping).filter(Number.isFinite);
-    els.bestDownload.innerHTML = (d.length ? num(Math.max(...d), 1) : '—') + ' <small>Mbps</small>';
-    els.bestUpload.innerHTML = (u.length ? num(Math.max(...u), 1) : '—') + ' <small>Mbps</small>';
-    els.bestPing.innerHTML = (pg.length ? num(Math.min(...pg), 1) : '—') + ' <small>ms</small>';
-    if (!hs.length) {
-      els.historyContent.innerHTML = '<div class="history-empty"><strong>No tests saved yet</strong>Run your first test and your results will appear here.</div>';
-      return;
-    }
-    const table = document.createElement('table');
-    table.innerHTML = '<thead><tr><th>Date</th><th>Download</th><th>Upload</th><th>Ping</th><th>Jitter</th></tr></thead>';
-    const tb = document.createElement('tbody');
-    for (const it of hs.slice(0, MAX_HISTORY)) {
-      const tr = document.createElement('tr');
-      [formatDate(it.date), num(it.download, 1) + ' Mbps', num(it.upload, 1) + ' Mbps', num(it.ping, 1) + ' ms', num(it.jitter, 1) + ' ms'].forEach((v, i) => {
-        const td = document.createElement('td'); td.textContent = v; if (i === 1 || i === 2) td.className = 'table-speed'; tr.appendChild(td);
-      });
-      tb.appendChild(tr);
-    }
-    table.appendChild(tb);
-    els.historyContent.replaceChildren(table);
-  }
+      function setStage(text, running) {
+        els.stageText.textContent = text;
+        els.stageDot.classList.toggle('pulse', !!running);
+      }
 
-  /* ---------- Verdict ---------- */
-  function renderVerdict() {
-    const r = S.res; if (r.down == null || r.up == null) { els.verdict.hidden = true; return; }
-    const good = [], warn = [];
-    good.push(r.down >= 100 ? 'multiple 4K streams' : r.down >= 25 ? '4K streaming' : r.down >= 5 ? 'HD streaming' : 'basic browsing and SD video');
-    const callsOk = r.up >= 3 && r.down >= 3 && (r.ping == null || r.ping < 150) && (r.jitter == null || r.jitter < 40);
-    if (callsOk) good.push('video calls');
-    if (r.ping != null && r.ping < 50 && (r.jitter == null || r.jitter < 20)) good.push('online gaming');
-    if (r.down >= 100 && r.up >= 20) good.push('large uploads and cloud backups');
-    const bloat = (loaded) => loaded != null && r.ping != null && loaded > Math.max(r.ping * 3, r.ping + 100);
-    if (bloat(r.loadDown) || bloat(r.loadUp)) warn.push('Latency jumps a lot when the line is busy (' + (bloat(r.loadUp) ? 'uploads' : 'downloads') + '), so calls and games may lag while others are using the network.');
-    if (r.jitter != null && r.jitter >= 40) warn.push('High jitter can cause choppy calls.');
-    if (r.up < 1) warn.push('Very low upload speed.');
-    els.verdict.innerHTML = '<b>Rough guide:</b> comfortable for ' + good.join(', ') + '.' + warn.map(w => '<br><span class="warn">⚠ ' + w + '</span>').join('');
-    els.verdict.hidden = false;
-  }
+      function setProgress(value, label) {
+        const pct = Math.max(0, Math.min(100, value));
+        els.progressFill.style.width = pct + '%';
+        els.progressPercent.textContent = Math.round(pct) + '%';
+        if (label) els.progressLabel.textContent = label;
+      }
 
-  /* ---------- Measurement engine ---------- */
-  function windowSpeed(samples, windowMs) {
-    const last = samples[samples.length - 1];
-    let first = samples[0];
-    for (let i = samples.length - 1; i >= 0; i--) { if (samples[i].t <= last.t - windowMs) { first = samples[i]; break; } }
-    const dt = last.t - first.t;
-    return dt < 50 ? 0 : (last.b - first.b) * 8 / (dt * 1000);   // Mbps
-  }
-function finalSpeed(samples) {
-  if (!Array.isArray(samples) || samples.length < 3) {
-    return null;
-  }
+      function setGaugeTarget(value, max, title, note, unit) {
+        S.gauge.value = Number.isFinite(value) ? Math.max(0, value) : 0;
+        S.gauge.max = Math.max(1, max || 10);
+        els.gaugeTitle.textContent = title;
+        els.gaugeNote.textContent = note;
+        els.gaugeUnit.textContent = unit;
+        els.gaugeNumber.textContent = Number.isFinite(value) ? value.toFixed(1) : '0.0';
+        drawGauge();
+      }
 
-  const valid = samples.filter(s =>
-    Number.isFinite(s.t) &&
-    Number.isFinite(s.b) &&
-    s.t >= 0 &&
-    s.b >= 0
-  );
+      function drawGauge() {
+        const canvas = els.gaugeCanvas;
+        const ctx = canvas.getContext('2d');
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const w = rect.width || 360;
+        const h = rect.height || 220;
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
 
-  if (valid.length < 3) return null;
+        const cx = w / 2;
+        const cy = h * 0.82;
+        const radius = Math.min(w * 0.38, h * 0.7);
 
-  const firstSample = valid[0];
-  const lastSample = valid[valid.length - 1];
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, Math.PI, Math.PI * 2);
+        ctx.lineWidth = 10;
+        ctx.strokeStyle = 'rgba(123,150,188,.15)';
+        ctx.stroke();
 
-  // Require enough measurement time after ramp-up.
-  const startT = Math.max(firstSample.t, RAMP_MS);
-  const endT = lastSample.t;
+        const fraction = Math.max(0, Math.min(1, S.gauge.value / S.gauge.max));
+        const arcAngle = Math.PI + (Math.PI * fraction);
+        const px = cx + Math.cos(arcAngle) * radius;
+        const py = cy + Math.sin(arcAngle) * radius;
 
-  if (endT - startT < 500) return null;
+        const gradient = ctx.createLinearGradient(cx - radius, cy, cx + radius, cy);
+        gradient.addColorStop(0, '#65a9ff');
+        gradient.addColorStop(1, '#54e1d2');
 
-  // Find/interpolate bytes transferred at the measurement boundary.
-  let startB = null;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, Math.PI, Math.PI + Math.PI * fraction);
+        ctx.lineWidth = 10;
+        ctx.strokeStyle = gradient;
+        ctx.stroke();
 
-  for (let i = 1; i < valid.length; i++) {
-    const a = valid[i - 1];
-    const b = valid[i];
+        ctx.beginPath();
+        ctx.arc(px, py, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#eef9ff';
+        ctx.fill();
+      }
 
-    if (a.t <= startT && b.t >= startT && b.t > a.t) {
-      const ratio = (startT - a.t) / (b.t - a.t);
-      startB = a.b + (b.b - a.b) * ratio;
-      break;
-    }
-  }
-
-  if (startB === null) {
-    const nearest = valid.find(s => s.t >= startT);
-    if (!nearest) return null;
-    startB = nearest.b;
-  }
-
-  const endB = lastSample.b;
-  const elapsedMs = endT - startT;
-  const transferredBytes = endB - startB;
-
-  if (
-    !Number.isFinite(transferredBytes) ||
-    transferredBytes <= 0 ||
-    elapsedMs < 500
-  ) {
-    return null;
-  }
-
-  // Bytes * 8 / milliseconds / 1000 = Mbps.
-  return (transferredBytes * 8) / (elapsedMs * 1000);
-}
-  function getPayload() {
-    if (!S.payload) {
-      const buf = new Uint8Array(8_000_000);
-      for (let i = 0; i < buf.length; i += 65536) crypto.getRandomValues(buf.subarray(i, Math.min(i + 65536, buf.length)));
-      S.payload = buf;
-    }
-    return S.payload;
-  }
-  function workerFail(e, ctl, meter) {
-    meter.errors++; meter.lastErr = e;
-    if (meter.errors >= 8 || (meter.bytes === 0 && meter.errors >= 3)) { meter.fatal = e; ctl.abort(); }
-  }
-
-async function pingOnce(signal, tag) {
-  const started = performance.now();
-
-  const response = await fetch(
-    makeUrl(API_DOWN, {
-      bytes: 0,
-      r: uid() + tag + '-' + started
-    }),
-    {
-      method: 'GET',
-      cache: 'no-store',
-      signal
-    }
-  );
-
-  if (!response.ok) {
-    throw new HttpError(response.status);
-  }
-
-  // Consume the response before recording elapsed time.
-  await response.arrayBuffer();
-
-  const elapsed = performance.now() - started;
-
-  if (!Number.isFinite(elapsed) || elapsed <= 0) {
-    throw new Error('Invalid latency measurement.');
-  }
-
-  return elapsed;
-}
-
-  async function runPing() {
-    const sig = S.ctl.signal;
-    S.phase = 'ping';
-    setStage('Measuring latency…', true);
-    resetGauge('ms', PING_STEPS, 'Latency', 'Round trip to the nearest Cloudflare server');
-    await pingOnce(sig, 'w');                 // warm-up: opens the connection so DNS/TLS setup doesn't inflate ping
-    ensureActive();
-    const times = [];
-    for (let i = 0; i < PING_COUNT; i++) {
-      ensureActive();
-      const ms = await pingOnce(sig, i);
-      times.push(ms);
-      S.res.ping = median(times); S.res.jitter = meanAbsStep(times);
-      setGaugeTarget(ms); renderMetrics();
-      setProgress(1 + 8 * (i + 1) / PING_COUNT, 'Checking latency');
-      await sleep(80, sig);
-    }
-    ensureActive();
-    setGaugeTarget(S.res.ping);
-    els.gaugeNote.textContent = 'Median of ' + PING_COUNT + ' pings';
-  }
- 
-async function downloadWorker(ctl, meter) {
-  const sizes = [4e6, 16e6, 25e6];
-  let n = 0;
-
-  while (!ctl.signal.aborted) {
-    const size = sizes[Math.min(n++, sizes.length - 1)];
-    let reader = null;
-
-    try {
-      const res = await fetch(
-        makeUrl(API_DOWN, { bytes: size, r: uid() }),
-        {
-          cache: 'no-store',
-          signal: ctl.signal
+      function loadHistory() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          S.history = raw ? JSON.parse(raw) : [];
+        } catch (_) {
+          S.history = [];
         }
-      );
-
-      if (!res.ok) {
-        throw new HttpError(res.status);
+        if (!Array.isArray(S.history)) S.history = [];
+        renderHistory();
       }
 
-      if (res.body && res.body.getReader) {
-        reader = res.body.getReader();
-
-        while (!ctl.signal.aborted) {
-          const chunk = await reader.read();
-
-          if (chunk.done) break;
-
-          meter.bytes += chunk.value.byteLength;
+      function saveHistory() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(S.history.slice(0, MAX_HISTORY)));
+        } catch (_) {
+          showToast('Local storage is restricted in this browser; this run was not saved.');
         }
+        renderHistory();
+      }
 
-        if (ctl.signal.aborted) {
-          try {
-            await reader.cancel();
-          } catch (_) {}
+      function formatDate(iso) {
+        try {
+          return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        } catch (_) {
+          return '—';
+        }
+      }
+
+      function renderHistory() {
+        if (!S.history.length) {
+          els.historyContent.innerHTML = '<div class="empty">No tests saved yet. Run a speed test to populate your history.</div>';
           return;
         }
-      } else {
-        const data = await res.arrayBuffer();
 
-        if (ctl.signal.aborted) return;
+        const rows = S.history.slice(0, MAX_HISTORY).map(item => `
+          <tr>
+            <td>${formatDate(item.date)}</td>
+            <td>${Number(item.download || 0).toFixed(1)} Mbps</td>
+            <td>${Number(item.upload || 0).toFixed(1)} Mbps</td>
+            <td>${Number(item.ping || 0).toFixed(1)} ms</td>
+            <td>${Number(item.jitter || 0).toFixed(1)} ms</td>
+          </tr>
+        `).join('');
 
-        meter.bytes += data.byteLength;
+        els.historyContent.innerHTML = `
+          <table>
+            <thead><tr><th>Date</th><th>Download</th><th>Upload</th><th>Ping</th><th>Jitter</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
       }
-    } catch (e) {
-      if (ctl.signal.aborted) return;
 
-      workerFail(e, ctl, meter);
-      await sleep(250, ctl.signal);
-    } finally {
-      if (reader) {
-        try {
-          reader.releaseLock();
-        } catch (_) {}
+      function makeUrl(base, params = {}) {
+        const url = new URL(base);
+        for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
+        return url.toString();
       }
-    }
-  }
-}
-  function xhrUpload(size, signal, meter) {
-    return new Promise((resolve, reject) => {
-      if (signal.aborted) return resolve('aborted');
-      const xhr = new XMLHttpRequest();
-      let last = 0;
-      const onAbort = () => xhr.abort();
-      signal.addEventListener('abort', onAbort, { once: true });
-      const cleanup = () => signal.removeEventListener('abort', onAbort);
-      xhr.open('POST', makeUrl(API_UP, { r: uid() }));
-      xhr.upload.onprogress = (e) => { meter.bytes += e.loaded - last; last = e.loaded; };
-      xhr.onload = () => { cleanup(); xhr.status >= 200 && xhr.status < 300 ? resolve('ok') : reject(new HttpError(xhr.status)); };
-      xhr.onerror = () => { cleanup(); reject(new TypeError('Network error')); };
-      xhr.onabort = () => { cleanup(); resolve('aborted'); };
-      xhr.send(getPayload().subarray(0, size));
-    });
-  }
-async function uploadWorker(ctl, meter) {
-  const sizes = S.uploadMode === 'xhr'
-    ? [1e6, 4e6, 8e6]
-    : [5e5, 1e6, 2e6];
 
-  let n = 0;
+      async function measurePing(signal) {
+        const t0 = performance.now();
+        const url = makeUrl(API_DOWN, { bytes: 64, r: Math.random().toString(36).slice(2) });
+        const response = await fetch(url, { signal, cache: 'no-store' });
+        if (!response.ok) throw new Error('Ping request failed');
+        await response.arrayBuffer();
+        return performance.now() - t0;
+      }
 
-  while (!ctl.signal.aborted) {
-    const size = sizes[Math.min(n++, sizes.length - 1)];
+      async function measureDownload(signal) {
+        const size = 4 * 1024 * 1024;
+        const start = performance.now();
+        const url = makeUrl(API_DOWN, { bytes: size, r: Math.random().toString(36).slice(2) });
+        const response = await fetch(url, { signal, cache: 'no-store' });
+        if (!response.ok) throw new Error('Download request failed');
+        const bytes = await response.arrayBuffer();
+        const elapsed = Math.max((performance.now() - start) / 1000, 0.1);
+        const mbps = ((bytes.byteLength * 8) / elapsed) / 1_000_000;
+        return mbps;
+      }
 
-    try {
-      if (S.uploadMode === 'xhr') {
-        await xhrUpload(size, ctl.signal, meter);
-      } else {
-        const payload = getPayload().subarray(0, size);
+      async function measureUpload(signal) {
+        const size = 2 * 1024 * 1024;
+        const payload = new Uint8Array(size);
+        const start = performance.now();
+        const response = await fetch(API_UP, {
+          method: 'POST',
+          body: payload,
+          signal,
+          cache: 'no-store'
+        });
+        if (!response.ok) throw new Error('Upload request failed');
+        await response.arrayBuffer();
+        const elapsed = Math.max((performance.now() - start) / 1000, 0.1);
+        return ((size * 8) / elapsed) / 1_000_000;
+      }
 
-        const r = await fetch(
-          makeUrl(API_UP, { r: uid() }),
-          {
-            method: 'POST',
-            body: payload,
-            cache: 'no-store',
-            signal: ctl.signal
-          }
-        );
+      async function runLatencyTest() {
+        const samples = [];
+        setStage('Measuring latency…', true);
+        setGaugeTarget(0, 200, 'Latency', 'Round trip to the nearest Cloudflare server', 'ms');
+        setProgress(12, 'Checking latency');
 
-        if (!r.ok) {
-          throw new HttpError(r.status);
+        for (let i = 0; i < 6; i++) {
+          if (S.controller && S.controller.signal.aborted) throw new DOMException('Test cancelled', 'AbortError');
+          const sample = await measurePing(S.controller.signal);
+          samples.push(sample);
+          const value = samples.slice().sort((a, b) => a - b)[Math.floor(samples.length / 2)] || sample;
+          const drift = samples.length > 1 ? samples.slice(1).reduce((acc, current, idx) => acc + Math.abs(current - samples[idx]), 0) / (samples.length - 1) : 0;
+          els.pingValue.textContent = value.toFixed(1);
+          els.jitterValue.textContent = drift.toFixed(1);
+          setGaugeTarget(value, 200, 'Latency', 'Round trip to the nearest Cloudflare server', 'ms');
+          setProgress(12 + (i + 1) * 12, 'Checking latency');
+          await new Promise(resolve => setTimeout(resolve, 120));
         }
 
-        await r.arrayBuffer();
-
-        // Count the payload only after the upload request succeeds.
-        meter.bytes += payload.byteLength;
+        return {
+          ping: Number(els.pingValue.textContent || 0),
+          jitter: Number(els.jitterValue.textContent || 0)
+        };
       }
-    } catch (e) {
-      if (ctl.signal.aborted) return;
 
-      workerFail(e, ctl, meter);
-      await sleep(250, ctl.signal);
-    }
-  }
-}
-  async function loadedPingLoop(ctl, out) {
-    while (!ctl.signal.aborted) {
-      try { out.push(await pingOnce(ctl.signal, 'l')); }
-      catch (_) { if (ctl.signal.aborted) return; }
-      await sleep(350, ctl.signal);
-    }
-  }
-  async function chooseUploadMode() {
-    // Prefer XHR (gives real upload progress). If the browser blocks it (e.g., CORS preflight from file://), fall back to fetch.
-    try { await xhrUpload(20000, S.ctl.signal, { bytes: 0 }); S.uploadMode = 'xhr'; }
-    catch (e) { ensureActive(); if (e instanceof HttpError) throw e; S.uploadMode = 'fetch'; }
-    ensureActive();
-  }
+      async function runDownloadTest() {
+        setStage('Measuring download speed…', true);
+        setGaugeTarget(0, 250, 'Download speed', 'Receiving test data', 'Mbps');
+        setProgress(42, 'Measuring download');
+        const speed = await measureDownload(S.controller.signal);
+        els.downloadValue.textContent = speed.toFixed(1);
+        els.downloadCaption.textContent = 'Measured this run';
+        setGaugeTarget(speed, 250, 'Download speed', 'Download complete', 'Mbps');
+        return speed;
+      }
 
-  async function runThroughput(kind) {
-    const P = profile(), isDown = kind === 'download';
-    const dur = isDown ? P.dlMs : P.ulMs, cap = isDown ? P.dlCap : P.ulCap;
-    const base = isDown ? 10 : 55, span = isDown ? 45 : 44;
-    S.phase = kind;
-    setStage(isDown ? 'Measuring download speed…' : 'Measuring upload speed…', true);
-    resetGauge('Mbps', SPEED_STEPS, isDown ? 'Download speed' : 'Upload speed', isDown ? 'Receiving test data' : 'Sending test data');
-    const caption = isDown ? els.downloadCaption : els.uploadCaption;
-    caption.textContent = isDown ? 'Receiving test data' : 'Sending test data';
+      async function runUploadTest() {
+        setStage('Measuring upload speed…', true);
+        setGaugeTarget(0, 120, 'Upload speed', 'Sending test data', 'Mbps');
+        setProgress(72, 'Measuring upload');
+        const speed = await measureUpload(S.controller.signal);
+        els.uploadValue.textContent = speed.toFixed(1);
+        els.uploadCaption.textContent = 'Measured this run';
+        setGaugeTarget(speed, 120, 'Upload speed', 'Upload complete', 'Mbps');
+        return speed;
+      }
 
-    const ctl = new AbortController();
-    const link = () => ctl.abort();
-    S.ctl.signal.addEventListener('abort', link, { once: true });
-    const meter = { bytes: 0, errors: 0, fatal: null, lastErr: null };
-    const samples = [{ t: 0, b: 0 }], loaded = [];
-    const t0 = performance.now();
-    let inst = 0;
+      async function runTest() {
+        if (S.running) return;
 
-    const sample = () => {
-  const t = performance.now() - t0;
-  samples.push({ t, b: meter.bytes });
+        S.running = true;
+        S.controller = new AbortController();
+        els.startBtn.disabled = true;
+        els.cancelBtn.hidden = false;
+        els.lightToggle.disabled = true;
+        setProgress(0, 'Starting test');
+        setStage('Preparing test…', true);
 
-  const rawSpeed = windowSpeed(samples, 800);
-  inst = inst === 0 ? rawSpeed : inst * 0.7 + rawSpeed * 0.3;
+        try {
+          const pingResult = await runLatencyTest();
+          const download = await runDownloadTest();
+          const upload = await runUploadTest();
+          const item = {
+            date: new Date().toISOString(),
+            download,
+            upload,
+            ping: pingResult.ping,
+            jitter: pingResult.jitter
+          };
 
-  setGaugeTarget(inst);
-  graphAdd(kind, inst);
-  S.res.bytes = S.bytesBefore + meter.bytes;
+          S.history.unshift(item);
+          S.history = S.history.slice(0, MAX_HISTORY);
+          saveHistory();
+          setProgress(100, 'Test complete');
+          setStage('Complete', false);
+          showToast('Speed test complete. Results saved locally.');
+        } catch (error) {
+          if (error && error.name === 'AbortError') {
+            setStage('Cancelled', false);
+            showToast('Test cancelled.');
+          } else {
+            setStage('Error', false);
+            showToast('The speed test failed. Please try again.');
+          }
+        } finally {
+          S.running = false;
+          S.controller = null;
+          els.startBtn.disabled = false;
+          els.cancelBtn.hidden = true;
+          els.lightToggle.disabled = false;
+          setProgress(100, 'Ready');
+          setStage('Ready when you are.', false);
+        }
+      }
 
-  const frac = Math.max(t / dur, meter.bytes / cap);
-  setProgress(
-    base + span * Math.min(1, frac),
-    isDown ? 'Measuring download' : 'Measuring upload'
-  );
+      els.startBtn.addEventListener('click', runTest);
+      els.cancelBtn.addEventListener('click', () => {
+        if (S.controller) S.controller.abort();
+      });
+      els.lightToggle.addEventListener('change', event => {
+        S.light = !!event.target.checked;
+        showToast(S.light ? 'Data saver mode enabled.' : 'Data saver mode disabled.');
+      });
 
-  if (t >= dur || meter.bytes >= cap) ctl.abort();
-};
-    const timer = setInterval(sample, SAMPLE_MS);
-    const workers = [loadedPingLoop(ctl, loaded)];
-    for (let i = 0; i < P.streams; i++) workers.push(isDown ? downloadWorker(ctl, meter) : uploadWorker(ctl, meter));
-    try { await Promise.all(workers); }
-    finally { clearInterval(timer); S.ctl.signal.removeEventListener('abort', link); }
-    sample();
-    ensureActive();
+      window.addEventListener('online', setOnlineStatus);
+      window.addEventListener('offline', setOnlineStatus);
+      window.addEventListener('resize', drawGauge);
 
-    const final = finalSpeed(samples);
-    if (final == null) throw meter.fatal || new Error('Not enough data was transferred for a reliable ' + kind + ' measurement.');
-    S.bytesBefore += meter.bytes;
-    S.res.bytes = S.bytesBefore;
-    S.res[isDown ? 'down' : 'up'] = final;
-    S.res[isDown ? 'loadDown' : 'loadUp'] = loaded.length >= 3 ? median(loaded) : null;
-    caption.textContent = 'Measured this run';
-    S.gauge.maxTarget = Math.max(S.gauge.maxTarget, niceMax(final, SPEED_STEPS));
-    setGaugeTarget(final);
-    els.gaugeNote.textContent = isDown ? 'Download complete' : 'Upload complete';
-    renderMetrics(); renderLoaded();
-  }
-
-  /* ---------- Test lifecycle ---------- */
-  function startUI() {
-    const P = profile();
-    S.running = true; S.ctl = new AbortController(); S.reason = ''; S.phase = 'starting'; S.t0 = performance.now(); S.bytesBefore = 0;
-    S.res = blankResults();
-    S.graph.points = []; S.graph.top = 10; S.graph.topTarget = 10; S.graph.dirty = true;
-    S.graph.xmax = Math.ceil(2.5 + (P.dlMs + P.ulMs) / 1000);
-    renderMetrics(); renderLoaded(); els.verdict.hidden = true;
-    els.downloadCaption.textContent = 'Receiving test data'; els.uploadCaption.textContent = 'Sending test data';
-    els.resultBadge.textContent = 'RUNNING';
-    els.graphEmpty.style.display = 'none';
-    els.startBtn.disabled = true; els.startBtnText.textContent = 'Testing…'; els.cancelBtn.hidden = false; els.lightToggle.disabled = true;
-    S.progress = 0; setProgress(0, 'Starting test');
-    setStage('Preparing test…', true);
-    resetGauge('ms', PING_STEPS, 'Connection test', 'Preparing the test connection');
-    updateConnectionDetails();
-  }
-  function stopUI() {
-    S.running = false; S.ctl = null;
-    els.startBtn.disabled = false; els.startBtnText.textContent = 'Run again'; els.cancelBtn.hidden = true; els.lightToggle.disabled = false;
-    els.stageDot.classList.remove('pulse');
-    updateConnectionDetails();
-  }
-  function abortTest(reason) {
-    if (!S.running || !S.ctl) return;
-    S.reason = reason; S.ctl.abort();
-  }
-  async function runTest() {
-    if (S.running) return;
-    if (!navigator.onLine) { showToast('Your browser reports that it is offline. Reconnect and try again.', true); return; }
-    startUI();
-    try {
-      loadMeta(S.ctl.signal);
-      await runPing();
-      await runThroughput('download');
-      await chooseUploadMode();
-      await runThroughput('upload');
-      ensureActive();
-      S.phase = 'complete';
-      setProgress(100, 'Test complete'); setStage('Test complete', false);
-      els.resultBadge.textContent = 'COMPLETE';
-      resetGauge('Mbps', SPEED_STEPS, 'Download speed', '↑ ' + num(S.res.up, 1) + ' Mbps up · ' + num(S.res.ping, 1) + ' ms ping');
-      setGaugeTarget(S.res.down);
-      renderVerdict();
-      const r = S.res;
-      S.history.unshift({ date: new Date().toISOString(), download: r.down, upload: r.up, ping: r.ping, jitter: r.jitter, loadDown: r.loadDown, loadUp: r.loadUp, bytes: r.bytes, edge: S.colo || null });
-      S.history = S.history.slice(0, MAX_HISTORY);
-      storageWrite(); renderHistory();
-      showToast('Speed test complete. Results saved in this browser.');
-    } catch (err) {
-      const aborted = err && err.name === 'AbortError';
-      S.phase = aborted ? 'cancelled' : 'error';
-      setStage(aborted ? 'Test cancelled' : 'Test could not finish', false);
-      els.resultBadge.textContent = aborted ? 'CANCELLED' : 'ERROR';
-      setProgress(S.progress, aborted ? 'Cancelled' : 'Test stopped');
-      let msg;
-      if (aborted) {
-        msg = S.reason === 'hidden' ? 'Test stopped because the tab went into the background. Keep it in front and try again.'
-            : S.reason === 'offline' ? 'Test stopped because the connection was lost.'
-            : 'Test cancelled.';
-      } else { msg = friendlyError(err); }
-      resetGauge('Mbps', SPEED_STEPS, aborted ? 'Test cancelled' : 'Test unavailable', aborted ? 'Press Run again when ready' : 'Check the connection and try again');
-      showToast(msg, !aborted || S.reason !== '');
-    } finally { stopUI(); }
-  }
-
-  /* ---------- Export / clear ---------- */
-  function exportHistory() {
-    if (!S.history.length) return;
-    const cols = ['Date', 'Download Mbps', 'Upload Mbps', 'Ping ms', 'Jitter ms', 'Loaded ping down ms', 'Loaded ping up ms', 'Data bytes', 'Server'];
-    const rows = S.history.map(x => [x.date, x.download, x.upload, x.ping, x.jitter, x.loadDown, x.loadUp, x.bytes, x.edge || '']);
-    const csv = [cols, ...rows].map(row => row.map(v => {
-      const s = v == null ? '' : (typeof v === 'number' ? String(Math.round(v * 100) / 100) : String(v));
-      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-    }).join(',')).join('\r\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    const a = document.createElement('a'); a.href = url; a.download = 'signal-speed-test-history.csv';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
-  }
-  function clearHistory() {
-    if (!S.history.length) return;
-    if (!confirm('Clear all saved speed-test history from this browser?')) return;
-    S.history = []; storageWrite(); renderHistory(); showToast('Saved history cleared.');
-  }
-  function updateFootnote() {
-    els.testFootnote.textContent = 'This test takes ' + profile().label + '. Results vary with Wi-Fi signal, other devices, and the route to the test server.';
-  }
-
-  /* ---------- Wire up ---------- */
-  els.startBtn.addEventListener('click', runTest);
-  els.cancelBtn.addEventListener('click', () => abortTest('user'));
-  els.exportBtn.addEventListener('click', exportHistory);
-  els.clearBtn.addEventListener('click', clearHistory);
-  els.lightToggle.addEventListener('change', () => { S.light = els.lightToggle.checked; prefWrite(S.light); updateFootnote(); });
-  window.addEventListener('online', setOnlineStatus);
-  window.addEventListener('offline', () => { setOnlineStatus(); abortTest('offline'); });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) abortTest('hidden'); });
-  window.addEventListener('resize', () => { drawGauge(); S.graph.dirty = true; });
-  if (window.ResizeObserver) {
-    const ro = new ResizeObserver(() => { drawGauge(); S.graph.dirty = true; });
-    ro.observe(els.gaugeCanvas); ro.observe(els.graphCanvas);
-  }
-
-  const conn = navigator.connection;
-  S.light = prefRead() || !!(conn && conn.saveData);
-  els.lightToggle.checked = S.light;
-  S.history = storageRead();
-  updateStorageNote(); renderHistory(); setOnlineStatus(); updateConnectionDetails(); updateFootnote();
-  resetGauge('Mbps', SPEED_STEPS, 'Download speed', 'Press start to measure');
-  drawGauge(); drawGraph();
-  requestAnimationFrame(tick);
-})();
-</script>
+      setOnlineStatus();
+      loadHistory();
+      setGaugeTarget(0, 10, 'Download speed', 'Press start to measure.', 'Mbps');
+      setProgress(0, 'Ready');
+    })();
+  </script>
 </body>
 </html>
